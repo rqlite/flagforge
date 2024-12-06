@@ -11,6 +11,8 @@ jobs:
 
     steps:
       - checkout
+      - run: test -z "$(gofmt -l . | tee /dev/stderr)"
+      - run: go vet ./...
       - run: go test -v ./...
 
 workflows:
