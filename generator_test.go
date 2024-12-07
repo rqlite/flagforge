@@ -6,7 +6,9 @@ import (
 )
 
 func Test_NewGenerator(t *testing.T) {
-	gen, err := NewGenerator("pkg", "name", "path")
+	path := mustWriteToTempTOMLFile("")
+	defer os.Remove(path)
+	gen, err := NewGenerator("pkg", "name", path)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

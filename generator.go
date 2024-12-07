@@ -105,6 +105,7 @@ type Generator struct {
 
 func NewGenerator(pkg, name, path string) (*Generator, error) {
 	viper.SetConfigFile(path)
+	viper.SetConfigType("toml")
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, err
 	}
