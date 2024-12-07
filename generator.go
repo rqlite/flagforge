@@ -3,9 +3,11 @@ package gen
 import (
 	"bytes"
 	"fmt"
+	"go/format"
 	"io"
-	"log"
 	"text/template"
+
+	"github.com/spf13/viper"
 )
 
 const flagTemplate = `
@@ -24,7 +26,7 @@ type Config struct {
 {{- end }}
 }
 
-// ParseFlags sets up and parses command-line flags.
+// Forge sets up and parses command-line flags.
 func Forge(arguments []string) (*flag.FlagSet, *Config, error) {
 	config := &Config{}
 	fs := flag.NewFlagSet("{{ .Name }}", flag.ExitOnError)
@@ -102,14 +104,25 @@ type Generator struct {
 }
 
 func NewGenerator(pkg, name, path string) (*Generator, error) {
+	viper.SetConfigFile(path)
+	if err := viper.ReadInConfig(); err != nil {
+		return nil, err
+	}
+
+	var flags []Flag
+	if err := viper.UnmarshalKey("flags", &flags); err != nil {
+		return nil, err
+	}
+
 	return &Generator{
-		pkg:  pkg,
-		name: name,
-		path: path,
+		pkg:   pkg,
+		name:  name,
+		path:  path,
+		flags: flags,
 	}, nil
 }
 
-func (g *Generator) Execute(f Format, w io.Writer) (n int64, err error) {
+func (g *Generator) Execute(f Format, w io.Writer) error {
 	switch f {
 	case Go:
 		return g.doGo(w)
@@ -118,17 +131,17 @@ func (g *Generator) Execute(f Format, w io.Writer) (n int64, err error) {
 	case HTML:
 		return g.doHTML(w)
 	default:
-		return 0, fmt.Errorf("unsupported format: %s", f)
+		return fmt.Errorf("unsupported format: %s", f)
 	}
 }
 
-func (g *Generator) doGo(w io.Writer) (int64, error) {
+func (g *Generator) doGo(w io.Writer) error {
 	// Parse the template.
 	tmpl, err := template.New("flags").Funcs(template.FuncMap{
 		"GoType": Flag.GoType,
 	}).Parse(flagTemplate)
 	if err != nil {
-		log.Fatalf("Error parsing template: %v", err)
+		return err
 	}
 
 	// Execute the template with the flags data.
@@ -142,23 +155,26 @@ func (g *Generator) doGo(w io.Writer) (int64, error) {
 		Name:  g.name,
 		Flags: g.flags,
 	}); err != nil {
-		log.Fatalf("Error executing template: %v", err)
+		return err
+	}
+
+	// Format the Go source.
+	formatted, err := format.Source(output.Bytes())
+	if err != nil {
+		return err
 	}
 
 	// Write the output to flags.go.
-	n, err := io.WriteString(w, output.String())
-	if err != nil {
-		return 0, err
-	}
-	return int64(n), nil
+	_, err = w.Write(formatted)
+	return err
 }
 
-func (g *Generator) doMarkdown(w io.Writer) (n int64, err error) {
+func (g *Generator) doMarkdown(w io.Writer) error {
 	_ = w
-	return 0, nil
+	return nil
 }
 
-func (g *Generator) doHTML(w io.Writer) (n int64, err error) {
+func (g *Generator) doHTML(w io.Writer) error {
 	_ = w
-	return 0, nil
+	return nil
 }
