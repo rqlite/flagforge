@@ -2,6 +2,18 @@
 # See: https://circleci.com/docs/configuration-reference
 version: 2.1
 
+commands: # a reusable command with parameters
+  restore_and_save_cache:
+    steps:
+      - restore_cache:
+          keys:
+            - go-mod-v4-{{ checksum "go.sum" }}
+      - run: go get -v -t -d ./...
+      - save_cache:
+          key: go-mod-v4-{{ checksum "go.sum" }}
+          paths:
+            - "/home/circleci/go/pkg/mod"
+
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/jobs-steps/#jobs-overview & https://circleci.com/docs/configuration-reference/#jobs
 jobs:
@@ -11,6 +23,7 @@ jobs:
 
     steps:
       - checkout
+      - restore_and_save_cache
       - run: test -z "$(gofmt -l . | tee /dev/stderr)"
       - run: go vet ./...
       - run: go test -v ./...
