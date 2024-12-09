@@ -19,6 +19,33 @@ func Test_NewGenerator(t *testing.T) {
 	}
 }
 
+func Test_Generator_SingleArgument(t *testing.T) {
+	toml := `
+	[[arguments]]
+	name = "DataDir"
+	type = "string"
+	required = true
+	short_help = "Path to data directory"
+	long_help = "Path to the directory where the node stores its data"
+	`
+
+	tomlFile := mustWriteToTempTOMLFile(toml)
+	defer os.Remove(tomlFile)
+
+	gen, err := NewGenerator("pkg", "name", tomlFile)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	tempFD := mustTempFD()
+	defer os.Remove(tempFD.Name())
+	defer tempFD.Close()
+	err = gen.Execute(Go, tempFD)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func Test_Generator_SingleFlag(t *testing.T) {
 	toml := `
 	[[flags]]
@@ -53,12 +80,12 @@ func Test_Generator_GoldenFiles(t *testing.T) {
 		out string
 	}{
 		{
-			in:  "single/single.toml",
-			out: "single/single.go",
+			in:  "single-flag/single.toml",
+			out: "single-flag/single.go",
 		},
 		{
-			in:  "multi/multi.toml",
-			out: "multi/multi.go",
+			in:  "multi-flag/multi.toml",
+			out: "multi-flag/multi.go",
 		},
 	} {
 		in := "testdata/" + f.in

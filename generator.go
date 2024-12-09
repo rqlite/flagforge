@@ -20,6 +20,10 @@ import (
 
 // Config represents all configuration options.
 type Config struct {
+{{- range .Args }}
+	// {{ .ShortHelp }}
+	{{ .Name }} {{ .GoType }}
+{{- end }}
 {{- range .Flags }}
 	// {{ .ShortHelp }}
 	{{ .Name }} {{ .GoType }}
@@ -30,6 +34,14 @@ type Config struct {
 func Forge(arguments []string) (*flag.FlagSet, *Config, error) {
 	config := &Config{}
 	fs := flag.NewFlagSet("{{ .Name }}", flag.ExitOnError)
+{{- range $index, $element := .Args }}
+	if len(arguments) < {{ $index }} {
+		return nil, nil, fmt.Errorf("missing required argument: {{ $element.Name }}")
+	}
+	{{- if eq .Type "string" }}
+	config.{{ .Name }} = arguments[{{ $index }}]
+	{{- end }}
+{{- end }}
 {{- range .Flags }}
 	{{- if eq .Type "string" }}
 	fs.StringVar(&config.{{ .Name }}, "{{ .CLI }}", "{{ .Default }}", "{{ .ShortHelp }}")
@@ -68,6 +80,33 @@ func (f Format) String() string {
 	}
 }
 
+// Argument represents a single argument configuration.
+type Argument struct {
+	Name      string `mapstructure:"name"`
+	Type      string `mapstructure:"type"`
+	Required  bool   `mapstructure:"required"`
+	ShortHelp string `mapstructure:"short_help"`
+	LongHelp  string `mapstructure:"long_help"`
+}
+
+// GoType converts the argument type to Go type.
+func (a Argument) GoType() string {
+	switch a.Type {
+	case "string":
+		return "string"
+	case "bool":
+		return "bool"
+	case "int":
+		return "int"
+	case "uint64":
+		return "uint64"
+	case "time.Duration":
+		return "time.Duration"
+	default:
+		panic(fmt.Sprintf("unknown type: %s", a.Type))
+	}
+}
+
 // Flag represents a single flag configuration.
 type Flag struct {
 	Name      string      `mapstructure:"name"`
@@ -101,6 +140,7 @@ type Generator struct {
 	name string
 	path string
 
+	args  []Argument
 	flags []Flag
 }
 
@@ -111,6 +151,10 @@ func NewGenerator(pkg, name, path string) (*Generator, error) {
 		return nil, err
 	}
 
+	var args []Argument
+	if err := viper.UnmarshalKey("arguments", &args); err != nil {
+		return nil, err
+	}
 	var flags []Flag
 	if err := viper.UnmarshalKey("flags", &flags); err != nil {
 		return nil, err
@@ -120,6 +164,7 @@ func NewGenerator(pkg, name, path string) (*Generator, error) {
 		pkg:   pkg,
 		name:  name,
 		path:  path,
+		args:  args,
 		flags: flags,
 	}, nil
 }
@@ -151,10 +196,12 @@ func (g *Generator) doGo(w io.Writer) error {
 	if err := tmpl.Execute(&output, struct {
 		Pkg   string
 		Name  string
+		Args  []Argument
 		Flags []Flag
 	}{
 		Pkg:   g.pkg,
 		Name:  g.name,
+		Args:  g.args,
 		Flags: g.flags,
 	}); err != nil {
 		return err
