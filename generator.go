@@ -88,7 +88,7 @@ func (f Flag) GoType() string {
 		return "int"
 	case "uint64":
 		return "uint64"
-	case "duration":
+	case "time.Duration":
 		return "time.Duration"
 	default:
 		panic(fmt.Sprintf("unknown type: %s", f.Type))
