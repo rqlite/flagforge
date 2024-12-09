@@ -1,0 +1,7 @@
+[[flags]]
+name = "NodeID"
+cli = "-node-id"
+type = "string"
+default = ""
+short_help = "Node ID"
+long_help = "Unique node identifier"

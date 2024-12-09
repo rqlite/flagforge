@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"bytes"
 	"os"
 	"testing"
 )
@@ -43,7 +44,38 @@ func Test_Generator_SingleFlag(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	tempFD.Close()
+}
+
+func Test_Generator_GoldenFiles(t *testing.T) {
+	for _, f := range []struct {
+		in  string
+		out string
+	}{
+		{
+			in:  "single.toml",
+			out: "single.go",
+		},
+	} {
+		in := "testdata/" + f.in
+		out := "testdata/" + f.out
+
+		gen, err := NewGenerator("pkg", "name", in)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		// crete a bytes buffer that suopports io.Writer
+		buf := new(bytes.Buffer)
+		err = gen.Execute(Go, buf)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if !bytes.Equal(buf.Bytes(), mustReadFile(out)) {
+			t.Fatalf("generated output does not match %s", out)
+		}
+	}
+
 }
 
 func mustWriteToTempTOMLFile(contents string) string {
@@ -64,4 +96,12 @@ func mustTempFD() *os.File {
 		panic(err)
 	}
 	return f
+}
+
+func mustReadFile(path string) []byte {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		panic(err)
+	}
+	return b
 }
