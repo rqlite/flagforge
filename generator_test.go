@@ -2,6 +2,7 @@ package gen
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"testing"
 )
@@ -55,6 +56,10 @@ func Test_Generator_GoldenFiles(t *testing.T) {
 			in:  "single.toml",
 			out: "single.go",
 		},
+		{
+			in:  "multi.toml",
+			out: "multi.go",
+		},
 	} {
 		in := "testdata/" + f.in
 		out := "testdata/" + f.out
@@ -64,7 +69,6 @@ func Test_Generator_GoldenFiles(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		// crete a bytes buffer that suopports io.Writer
 		buf := new(bytes.Buffer)
 		err = gen.Execute(Go, buf)
 		if err != nil {
@@ -72,7 +76,9 @@ func Test_Generator_GoldenFiles(t *testing.T) {
 		}
 
 		if !bytes.Equal(buf.Bytes(), mustReadFile(out)) {
-			t.Fatalf("generated output does not match %s", out)
+			t.Errorf("generated output does not match %s\n", out)
+			fmt.Println(buf.String())
+			t.Fatal()
 		}
 	}
 

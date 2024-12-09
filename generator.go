@@ -44,6 +44,7 @@ func Forge(arguments []string) (*flag.FlagSet, *Config, error) {
     }
 	return fs, config, nil
 }
+
 `
 
 type Format int
