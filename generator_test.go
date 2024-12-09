@@ -80,12 +80,12 @@ func Test_Generator_GoldenFiles(t *testing.T) {
 		out string
 	}{
 		{
-			in:  "single-flag/single.toml",
-			out: "single-flag/single.go",
+			in:  "single-flag/in.toml",
+			out: "single-flag/out.go",
 		},
 		{
-			in:  "multi-flag/multi.toml",
-			out: "multi-flag/multi.go",
+			in:  "multi-flag/in.toml",
+			out: "multi-flag/out.go",
 		},
 	} {
 		in := "testdata/" + f.in
