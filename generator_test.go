@@ -81,7 +81,6 @@ func Test_Generator_GoldenFiles(t *testing.T) {
 			t.Fatal()
 		}
 	}
-
 }
 
 func mustWriteToTempTOMLFile(contents string) string {
