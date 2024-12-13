@@ -69,6 +69,7 @@ func Forge(arguments []string) (*flag.FlagSet, *Config, error) {
 
 `
 
+// Format represents the output format of the generator.
 type Format int
 
 const (
@@ -77,6 +78,7 @@ const (
 	HTML
 )
 
+// String returns the string representation of the format.
 func (f Format) String() string {
 	switch f {
 	case Go:
@@ -109,6 +111,7 @@ type Flag struct {
 	LongHelp  string      `mapstructure:"long_help"`
 }
 
+// Generator represents a flag, HTML, or Markdown generator.
 type Generator struct {
 	pkg  string
 	name string
@@ -118,6 +121,8 @@ type Generator struct {
 	flags []Flag
 }
 
+// NewGenerator creates a new generator with the given package name, name, and
+// path to the TOML configuration file.
 func NewGenerator(pkg, name, path string) (*Generator, error) {
 	viper.SetConfigFile(path)
 	viper.SetConfigType("toml")
@@ -143,6 +148,8 @@ func NewGenerator(pkg, name, path string) (*Generator, error) {
 	}, nil
 }
 
+// Execute generates the output in the given format and writes it to the given
+// writer.
 func (g *Generator) Execute(f Format, w io.Writer) error {
 	switch f {
 	case Go:
