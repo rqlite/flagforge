@@ -70,6 +70,49 @@ func Forge(arguments []string) (*flag.FlagSet, *Config, error) {
 
 `
 
+const htmlTemplate = `
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+table {
+	width: 100%;
+	border-collapse: collapse;
+}
+th, td {
+	border: 1px solid #ddd;
+	padding: 8px;
+}
+th {
+	background-color: #f2f2f2;
+	text-align: left;
+}
+.col-cli { width: 30%; }
+.col-usage { width: 70%; }
+</style>
+</head>
+<body>
+
+<table>
+	<tr>
+		<th class="col-cli">Flag</th>
+		<th class="col-usage">Usage</th>
+	</tr>
+	{{- range .Flags }}
+	<tr>
+		<td><code>{{ .CLI | html }}</code></td>
+		<td>{{ .ShortHelp | html }}.
+		{{- if .LongHelp }}
+		    <br><br>{{ .LongHelp | html }}
+		{{- end }}</td>
+	</tr>
+	{{- end }}
+</table>
+
+</body>
+</html>
+`
+
 // Format represents the output format of the generator.
 type Format int
 
@@ -225,7 +268,27 @@ func (g *Generator) doMarkdown(w io.Writer) error {
 }
 
 func (g *Generator) doHTML(w io.Writer) error {
-	_ = w
+	// Parse the template.
+	tmpl, err := template.New("htmlTable").Funcs(template.FuncMap{
+		"html": func(s string) string {
+			return template.HTMLEscapeString(s)
+		},
+	}).Parse(htmlTemplate)
+	if err != nil {
+		return fmt.Errorf("Error parsing HTML template: %v", err)
+	}
+
+	// Execute the template with the flags data.
+	var output bytes.Buffer
+	if err := tmpl.Execute(&output, struct {
+		Flags []Flag
+	}{Flags: g.flags}); err != nil {
+		return fmt.Errorf("Error executing HTML template: %v", err)
+	}
+
+	if _, err := w.Write(output.Bytes()); err != nil {
+		return fmt.Errorf("Error writing HTML file: %v", err)
+	}
 	return nil
 }
 
