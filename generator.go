@@ -16,6 +16,9 @@ package {{ .Pkg }}
 
 import (
 	"flag"
+	{{- if .Args }}
+	"fmt"
+	{{- end }}
 )
 
 // Config represents all configuration options.

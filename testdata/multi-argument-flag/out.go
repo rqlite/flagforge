@@ -3,6 +3,7 @@ package pkg
 
 import (
 	"flag"
+	"fmt"
 )
 
 // Config represents all configuration options.
