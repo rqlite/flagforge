@@ -1,0 +1,22 @@
+[[arguments]]
+name = "DataDir"
+type = "string"
+required = true
+short_help = "Data directory"
+long_help = "The directory in which the system will store its data"
+
+[[flags]]
+name = "NodeID"
+cli = "-node-id"
+type = "string"
+default = ""
+short_help = "Node ID"
+long_help = "Unique node identifier"
+
+[[flags]]
+name = "HTTPAddr"
+cli = "-http-addr"
+type = "string"
+default = "localhost:4001"
+short_help = "HTTP API bind address"
+long_help = "The interface on which the system will listen"

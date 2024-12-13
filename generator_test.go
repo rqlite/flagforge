@@ -87,6 +87,10 @@ func Test_Generator_GoldenFiles(t *testing.T) {
 			in:  "multi-flag/in.toml",
 			out: "multi-flag/out.go",
 		},
+		{
+			in:  "multi-argument-flag/in.toml",
+			out: "multi-argument-flag/out.go",
+		},
 	} {
 		in := "testdata/" + f.in
 		out := "testdata/" + f.out
