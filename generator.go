@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go/format"
 	"io"
+	"strings"
 	"text/template"
 
 	"github.com/spf13/viper"
@@ -198,11 +199,39 @@ func (g *Generator) doGo(w io.Writer) error {
 }
 
 func (g *Generator) doMarkdown(w io.Writer) error {
-	_ = w
+	// Write the markdown table header.
+	_, err := w.Write([]byte("| Flag | Usage |\n|-|-|\n"))
+	if err != nil {
+		return err
+	}
+
+	// Write each flag as a row in the table.
+	for _, flag := range g.flags {
+		builder := strings.Builder{}
+		builder.WriteString("|")
+		builder.WriteString(escapeMarkdown(flag.CLI))
+		builder.WriteString("|")
+		builder.WriteString(escapeMarkdown(flag.ShortHelp))
+		if flag.Default != nil {
+			builder.WriteString(fmt.Sprintf("\n%s", escapeMarkdown(flag.LongHelp)))
+		}
+		builder.WriteString("|")
+		_, err = w.Write([]byte(builder.String()))
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 func (g *Generator) doHTML(w io.Writer) error {
 	_ = w
 	return nil
+}
+
+// escapeMarkdown escapes markdown special characters.
+func escapeMarkdown(text string) string {
+	text = strings.ReplaceAll(text, "|", "\\|")
+	text = strings.ReplaceAll(text, "\n", "<br>")
+	return text
 }
