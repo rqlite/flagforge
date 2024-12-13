@@ -3,6 +3,7 @@ package pkg
 
 import (
 	"flag"
+	"time"
 )
 
 // Config represents all configuration options.
@@ -11,6 +12,8 @@ type Config struct {
 	NodeID string
 	// HTTP API bind address
 	HTTPAddr string
+	// An interval of time
+	Interval time.Duration
 }
 
 // Forge sets up and parses command-line flags.
@@ -19,6 +22,7 @@ func Forge(arguments []string) (*flag.FlagSet, *Config, error) {
 	fs := flag.NewFlagSet("name", flag.ExitOnError)
 	fs.StringVar(&config.NodeID, "-node-id", "", "Node ID")
 	fs.StringVar(&config.HTTPAddr, "-http-addr", "localhost:4001", "HTTP API bind address")
+	fs.DurationVar(&config.Interval, "-interval", 100, "An interval of time")
 	if err := fs.Parse(arguments); err != nil {
 		return nil, nil, err
 	}

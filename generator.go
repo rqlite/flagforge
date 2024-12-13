@@ -19,17 +19,22 @@ import (
 	{{- if .Args }}
 	"fmt"
 	{{- end }}
+	{{- range .Flags }}
+	{{- if eq .Type "time.Duration" }}
+	"time"
+	{{- end }}
+	{{- end }}
 )
 
 // Config represents all configuration options.
 type Config struct {
 {{- range .Args }}
 	// {{ .ShortHelp }}
-	{{ .Name }} {{ .GoType }}
+	{{ .Name }} {{ .Type }}
 {{- end }}
 {{- range .Flags }}
 	// {{ .ShortHelp }}
-	{{ .Name }} {{ .GoType }}
+	{{ .Name }} {{ .Type }}
 {{- end }}
 }
 
@@ -52,6 +57,8 @@ func Forge(arguments []string) (*flag.FlagSet, *Config, error) {
 	fs.BoolVar(&config.{{ .Name }}, "{{ .CLI }}", {{ .Default }}, "{{ .ShortHelp }}")
 	{{- else if eq .Type "int" }}
 	fs.IntVar(&config.{{ .Name }}, "{{ .CLI }}", {{ .Default }}, "{{ .ShortHelp }}")
+	{{- else if eq .Type "time.Duration" }}
+	fs.DurationVar(&config.{{ .Name }}, "{{ .CLI }}", {{ .Default }}, "{{ .ShortHelp }}")
 	{{- end }}
 {{- end }}
     if err := fs.Parse(arguments); err != nil {
@@ -92,24 +99,6 @@ type Argument struct {
 	LongHelp  string `mapstructure:"long_help"`
 }
 
-// GoType converts the argument type to Go type.
-func (a Argument) GoType() string {
-	switch a.Type {
-	case "string":
-		return "string"
-	case "bool":
-		return "bool"
-	case "int":
-		return "int"
-	case "uint64":
-		return "uint64"
-	case "time.Duration":
-		return "time.Duration"
-	default:
-		panic(fmt.Sprintf("unknown type: %s", a.Type))
-	}
-}
-
 // Flag represents a single flag configuration.
 type Flag struct {
 	Name      string      `mapstructure:"name"`
@@ -118,24 +107,6 @@ type Flag struct {
 	Default   interface{} `mapstructure:"default"`
 	ShortHelp string      `mapstructure:"short_help"`
 	LongHelp  string      `mapstructure:"long_help"`
-}
-
-// GoType converts the flag type to Go type.
-func (f Flag) GoType() string {
-	switch f.Type {
-	case "string":
-		return "string"
-	case "bool":
-		return "bool"
-	case "int":
-		return "int"
-	case "uint64":
-		return "uint64"
-	case "time.Duration":
-		return "time.Duration"
-	default:
-		panic(fmt.Sprintf("unknown type: %s", f.Type))
-	}
 }
 
 type Generator struct {
@@ -151,16 +122,16 @@ func NewGenerator(pkg, name, path string) (*Generator, error) {
 	viper.SetConfigFile(path)
 	viper.SetConfigType("toml")
 	if err := viper.ReadInConfig(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read TOML file: %w", err)
 	}
 
 	var args []Argument
 	if err := viper.UnmarshalKey("arguments", &args); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal arguments: %w", err)
 	}
 	var flags []Flag
 	if err := viper.UnmarshalKey("flags", &flags); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal flags: %w", err)
 	}
 
 	return &Generator{
@@ -187,11 +158,9 @@ func (g *Generator) Execute(f Format, w io.Writer) error {
 
 func (g *Generator) doGo(w io.Writer) error {
 	// Parse the template.
-	tmpl, err := template.New("flags").Funcs(template.FuncMap{
-		"GoType": Flag.GoType,
-	}).Parse(flagTemplate)
+	tmpl, err := template.New("flags").Parse(flagTemplate)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to parse template: %w", err)
 	}
 
 	// Execute the template with the flags data.
@@ -213,7 +182,7 @@ func (g *Generator) doGo(w io.Writer) error {
 	// Format the Go source.
 	formatted, err := format.Source(output.Bytes())
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to format source: %w", err)
 	}
 
 	// Write the output to flags.go.

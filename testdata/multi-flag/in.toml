@@ -13,3 +13,11 @@ type = "string"
 default = "localhost:4001"
 short_help = "HTTP API bind address"
 long_help = "The interface on which the system will listen"
+
+[[flags]]
+name = "Interval"
+cli = "-interval"
+type = "time.Duration"
+default = 100
+short_help = "An interval of time"
+long_help = "An interval to check something"

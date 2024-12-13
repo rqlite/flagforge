@@ -103,7 +103,7 @@ func Test_Generator_GoldenFiles(t *testing.T) {
 		buf := new(bytes.Buffer)
 		err = gen.Execute(Go, buf)
 		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
+			t.Fatalf("unexpected error testing %s: %v", in, err)
 		}
 
 		if !bytes.Equal(buf.Bytes(), mustReadFile(out)) {
