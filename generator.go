@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -59,13 +60,21 @@ func Forge(arguments []string) (*flag.FlagSet, *Config, error) {
 	{{- else if eq .Type "int" }}
 	fs.IntVar(&config.{{ .Name }}, "{{ .CLI }}", {{ .Default }}, "{{ .ShortHelp }}")
 	{{- else if eq .Type "time.Duration" }}
-	fs.DurationVar(&config.{{ .Name }}, "{{ .CLI }}", {{ .Default }}, "{{ .ShortHelp }}")
+	fs.DurationVar(&config.{{ .Name }}, "{{ .CLI }}", mustParseDuration("{{ .Default }}"), "{{ .ShortHelp }}")
 	{{- end }}
 {{- end }}
     if err := fs.Parse(arguments); err != nil {
 	    return nil, nil, err
     }
 	return fs, config, nil
+}
+
+func mustParseDuration(d string) time.Duration {
+	td, err := time.ParseDuration(d)
+	if err != nil {
+		panic(err)
+	}
+	return td
 }
 
 `
@@ -212,6 +221,23 @@ func (g *Generator) doGo(w io.Writer) error {
 	tmpl, err := template.New("flags").Parse(flagTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %w", err)
+	}
+
+	// Perform some checks of the flags.
+	for _, flag := range g.flags {
+		if flag.Type == "time.Duration" {
+			if flag.Default == nil {
+				flag.Default = 0
+			} else {
+				s, ok := flag.Default.(string)
+				if !ok {
+					return fmt.Errorf("time.Duration flag %s has non-string default", flag.Name)
+				}
+				if _, err := time.ParseDuration(s); err != nil {
+					return fmt.Errorf("time.Duration flag %s has invalid default: %v", flag.Name, err)
+				}
+			}
+		}
 	}
 
 	// Execute the template with the flags data.
