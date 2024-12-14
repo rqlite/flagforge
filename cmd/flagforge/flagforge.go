@@ -13,11 +13,13 @@ func main() {
 		formatStr string
 		pkg       string
 		name      string
+		out       string
 	)
 
 	flag.StringVar(&formatStr, "f", "go", "output format: go|markdown|html")
 	flag.StringVar(&pkg, "pkg", "main", "package name for generated code")
 	flag.StringVar(&name, "name", "app", "name of the flagset")
+	flag.StringVar(&out, "o", "", "output file")
 	flag.Parse()
 
 	if flag.NArg() < 1 {
@@ -42,7 +44,15 @@ func main() {
 		printExit("failed to create generator: %v\n", err)
 	}
 
-	if err := g.Execute(f, os.Stdout); err != nil {
+	w := os.Stdout
+	if out != "" {
+		w, err = os.Create(out)
+		if err != nil {
+			printExit("failed to create output file: %v\n", err)
+		}
+		defer w.Close()
+	}
+	if err := g.Execute(f, w); err != nil {
 		printExit("failed to generate output: %v\n", err)
 	}
 }
