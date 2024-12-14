@@ -1,7 +1,53 @@
 package main
 
-import "fmt"
+import (
+	"flag"
+	"fmt"
+	"os"
+
+	gen "github.com/rqlite/flagforge"
+)
 
 func main() {
-	fmt.Println("Hello, World!")
+	var (
+		formatStr string
+		pkg       string
+		name      string
+	)
+
+	flag.StringVar(&formatStr, "f", "go", "output format: go|markdown|html")
+	flag.StringVar(&pkg, "pkg", "main", "package name for generated code")
+	flag.StringVar(&name, "name", "app", "name of the flagset")
+	flag.Parse()
+
+	if flag.NArg() < 1 {
+		printExit("no input TOML file provided\n")
+	}
+	inputPath := flag.Arg(0)
+
+	var f gen.Format
+	switch formatStr {
+	case "go":
+		f = gen.Go
+	case "markdown":
+		f = gen.Markdown
+	case "html":
+		f = gen.HTML
+	default:
+		printExit("unknown format: %s\n", formatStr)
+	}
+
+	g, err := gen.NewGenerator(pkg, name, inputPath)
+	if err != nil {
+		printExit("failed to create generator: %v\n", err)
+	}
+
+	if err := g.Execute(f, os.Stdout); err != nil {
+		printExit("failed to generate output: %v\n", err)
+	}
+}
+
+func printExit(format string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, format, args...)
+	os.Exit(1)
 }
