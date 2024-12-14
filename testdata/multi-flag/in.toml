@@ -18,6 +18,6 @@ long_help = "The interface on which the system will listen"
 name = "Interval"
 cli = "-interval"
 type = "time.Duration"
-default = 100
+default = "10s"
 short_help = "An interval of time"
 long_help = "An interval to check something"

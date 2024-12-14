@@ -3,7 +3,31 @@ package pkg
 
 import (
 	"flag"
+	"fmt"
+	"strings"
+	"time"
 )
+
+// StringSlice wraps a string slice and implements the flag.Value interface.
+type StringSliceValue struct {
+	ss *[]string
+}
+
+func NewStringSliceValue(ss *[]string) *StringSliceValue {
+	return &StringSliceValue{ss}
+}
+
+// String returns a string representation of the StringSliceValue.
+func (s *StringSliceValue) String() string {
+	return fmt.Sprintf("%v", *s.ss)
+}
+
+// Set sets the value of the StringSliceValue.
+func (s *StringSliceValue) Set(value string) error {
+	ss := strings.Split(value, ",")
+	*s.ss = ss
+	return nil
+}
 
 // Config represents all configuration options.
 type Config struct {
@@ -20,4 +44,12 @@ func Forge(arguments []string) (*flag.FlagSet, *Config, error) {
 		return nil, nil, err
 	}
 	return fs, config, nil
+}
+
+func mustParseDuration(d string) time.Duration {
+	td, err := time.ParseDuration(d)
+	if err != nil {
+		panic(err)
+	}
+	return td
 }
