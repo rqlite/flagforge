@@ -44,8 +44,8 @@ func (s *StringSliceValue) Set(value string) error {
 	return nil
 }
 
-// Config represents all configuration options.
-type Config struct {
+// {{ .ConfigType }} represents all configuration options.
+type {{ .ConfigType }} struct {
 {{- range .Args }}
 	// {{ .ShortHelp }}
 	{{ .Name }} {{ .Type }}
@@ -57,8 +57,8 @@ type Config struct {
 }
 
 // Forge sets up and parses command-line flags.
-func Forge(arguments []string) (*flag.FlagSet, *Config, error) {
-	config := &Config{}
+func Forge(arguments []string) (*flag.FlagSet, *{{ .ConfigType }}, error) {
+	config := &{{ .ConfigType }}{}
 	fs := flag.NewFlagSet("{{ .Name }}", flag.ExitOnError)
 {{- range $index, $element := .Args }}
 	if len(arguments) < {{ $index }} {
@@ -184,9 +184,10 @@ type Flag struct {
 
 // Generator represents a flag, HTML, or Markdown generator.
 type Generator struct {
-	pkg  string
-	name string
-	path string
+	pkg        string
+	name       string
+	configType string
+	path       string
 
 	args  []Argument
 	flags []Flag
@@ -194,7 +195,7 @@ type Generator struct {
 
 // NewGenerator creates a new generator with the given package name, name, and
 // path to the TOML configuration file.
-func NewGenerator(pkg, name, path string) (*Generator, error) {
+func NewGenerator(pkg, name, configType, path string) (*Generator, error) {
 	viper.SetConfigFile(path)
 	viper.SetConfigType("toml")
 	if err := viper.ReadInConfig(); err != nil {
@@ -211,11 +212,12 @@ func NewGenerator(pkg, name, path string) (*Generator, error) {
 	}
 
 	return &Generator{
-		pkg:   pkg,
-		name:  name,
-		path:  path,
-		args:  args,
-		flags: flags,
+		pkg:        pkg,
+		name:       name,
+		configType: configType,
+		path:       path,
+		args:       args,
+		flags:      flags,
 	}, nil
 }
 
@@ -261,15 +263,17 @@ func (g *Generator) doGo(w io.Writer) error {
 	// Execute the template with the flags data.
 	var output bytes.Buffer
 	if err := tmpl.Execute(&output, struct {
-		Pkg   string
-		Name  string
-		Args  []Argument
-		Flags []Flag
+		Pkg        string
+		Name       string
+		ConfigType string
+		Args       []Argument
+		Flags      []Flag
 	}{
-		Pkg:   g.pkg,
-		Name:  g.name,
-		Args:  g.args,
-		Flags: g.flags,
+		Pkg:        g.pkg,
+		Name:       g.name,
+		ConfigType: g.configType,
+		Args:       g.args,
+		Flags:      g.flags,
 	}); err != nil {
 		return err
 	}

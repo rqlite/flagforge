@@ -10,7 +10,7 @@ import (
 func Test_NewGenerator(t *testing.T) {
 	path := mustWriteToTempTOMLFile("")
 	defer os.Remove(path)
-	gen, err := NewGenerator("pkg", "name", path)
+	gen, err := NewGenerator("pkg", "name", "Config", path)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -32,7 +32,7 @@ func Test_Generator_SingleArgument(t *testing.T) {
 	tomlFile := mustWriteToTempTOMLFile(toml)
 	defer os.Remove(tomlFile)
 
-	gen, err := NewGenerator("pkg", "name", tomlFile)
+	gen, err := NewGenerator("pkg", "name", "Config", tomlFile)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -60,7 +60,7 @@ func Test_Generator_SingleFlag(t *testing.T) {
 	tomlFile := mustWriteToTempTOMLFile(toml)
 	defer os.Remove(tomlFile)
 
-	gen, err := NewGenerator("pkg", "name", tomlFile)
+	gen, err := NewGenerator("pkg", "name", "Config", tomlFile)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -95,7 +95,7 @@ func Test_Generator_GoldenFiles(t *testing.T) {
 		in := "testdata/" + f.in
 		out := "testdata/" + f.out
 
-		gen, err := NewGenerator("pkg", "name", in)
+		gen, err := NewGenerator("pkg", "name", "Config", in)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
