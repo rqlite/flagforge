@@ -65,7 +65,13 @@ func (p *Parser) ParseReader(r io.Reader) (*ParsedConfig, error) {
 }
 
 func parseConfig(v *viper.Viper) (*ParsedConfig, error) {
-	var goConfig GoConfig
+	goConfig := GoConfig{
+		Package:           "pkg",
+		ConfigTypeName:    "Config",
+		FlagSetName:       "name",
+		FlagErrorHandling: "ExitOnError",
+	}
+
 	if err := v.UnmarshalKey("go", &goConfig); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal go config: %w", err)
 	}
@@ -86,10 +92,5 @@ func parseConfig(v *viper.Viper) (*ParsedConfig, error) {
 }
 
 func getViper() *viper.Viper {
-	v := viper.New()
-	v.SetDefault("go.package", "pkg")
-	v.SetDefault("go.config_type_name", "Config")
-	v.SetDefault("go.flag_set_name", "name")
-	v.SetDefault("go.flag_error_handling", "ExitOnError")
-	return v
+	return viper.New()
 }
