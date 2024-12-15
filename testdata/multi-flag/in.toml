@@ -21,3 +21,9 @@ type = "time.Duration"
 default = "10s"
 short_help = "An interval of time"
 long_help = "An interval to check something"
+
+[[flags]]
+name = "List"
+cli = "-list"
+type = "[]string"
+short_help = "A slice of strings"

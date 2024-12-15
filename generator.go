@@ -23,22 +23,22 @@ import (
 
 // StringSlice wraps a string slice and implements the flag.Value interface.
 type StringSliceValue struct {
-	ss *[]string
+	ss []string
 }
 
-func NewStringSliceValue(ss *[]string) *StringSliceValue {
+func NewStringSliceValue(ss []string) *StringSliceValue {
 	return &StringSliceValue{ss}
 }
 
 // String returns a string representation of the StringSliceValue.
 func (s *StringSliceValue) String() string {
-	return fmt.Sprintf("%v", *s.ss)
+	return fmt.Sprintf("%v", s.ss)
 }
 
 // Set sets the value of the StringSliceValue.
 func (s *StringSliceValue) Set(value string) error {
 	ss := strings.Split(value, ",")
-	*s.ss = ss
+	s.ss = ss
 	return nil
 }
 
@@ -76,7 +76,7 @@ func Forge(arguments []string) (*flag.FlagSet, *{{ .ConfigType }}, error) {
 	{{- else if eq .Type "time.Duration" }}
 	fs.DurationVar(&config.{{ .Name }}, "{{ .CLI }}", mustParseDuration("{{ .Default }}"), "{{ .ShortHelp }}")
 	{{- else if eq .Type "[]string" }}
-	fs.Var(NewStringSliceValue(&config.{{ .Name }}), "{{ .CLI }}", "{{ .ShortHelp }}")
+	fs.Var(NewStringSliceValue(config.{{ .Name }}), "{{ .CLI }}", "{{ .ShortHelp }}")
 	{{- end }}
 {{- end }}
     if err := fs.Parse(arguments); err != nil {

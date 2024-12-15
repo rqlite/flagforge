@@ -10,22 +10,22 @@ import (
 
 // StringSlice wraps a string slice and implements the flag.Value interface.
 type StringSliceValue struct {
-	ss *[]string
+	ss []string
 }
 
-func NewStringSliceValue(ss *[]string) *StringSliceValue {
+func NewStringSliceValue(ss []string) *StringSliceValue {
 	return &StringSliceValue{ss}
 }
 
 // String returns a string representation of the StringSliceValue.
 func (s *StringSliceValue) String() string {
-	return fmt.Sprintf("%v", *s.ss)
+	return fmt.Sprintf("%v", s.ss)
 }
 
 // Set sets the value of the StringSliceValue.
 func (s *StringSliceValue) Set(value string) error {
 	ss := strings.Split(value, ",")
-	*s.ss = ss
+	s.ss = ss
 	return nil
 }
 
@@ -37,6 +37,8 @@ type Config struct {
 	HTTPAddr string
 	// An interval of time
 	Interval time.Duration
+	// A slice of strings
+	List []string
 }
 
 // Forge sets up and parses command-line flags.
@@ -46,6 +48,7 @@ func Forge(arguments []string) (*flag.FlagSet, *Config, error) {
 	fs.StringVar(&config.NodeID, "-node-id", "", "Node ID")
 	fs.StringVar(&config.HTTPAddr, "-http-addr", "localhost:4001", "HTTP API bind address")
 	fs.DurationVar(&config.Interval, "-interval", mustParseDuration("10s"), "An interval of time")
+	fs.Var(NewStringSliceValue(config.List), "-list", "A slice of strings")
 	if err := fs.Parse(arguments); err != nil {
 		return nil, nil, err
 	}
