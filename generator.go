@@ -300,9 +300,12 @@ func (g *Generator) doMarkdown(w io.Writer) error {
 		builder.WriteString("|")
 		builder.WriteString(escapeMarkdown(flag.ShortHelp))
 		if flag.Default != nil {
-			builder.WriteString(fmt.Sprintf("\n%s", escapeMarkdown(flag.LongHelp)))
+			if !strings.HasSuffix(flag.ShortHelp, ".") {
+				builder.WriteString(".")
+			}
+			builder.WriteString(fmt.Sprintf(" %s", escapeMarkdown(flag.LongHelp)))
 		}
-		builder.WriteString("|")
+		builder.WriteString("|\n")
 		_, err = w.Write([]byte(builder.String()))
 		if err != nil {
 			return err
