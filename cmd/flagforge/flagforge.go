@@ -10,17 +10,11 @@ import (
 
 func main() {
 	var (
-		formatStr  string
-		pkg        string
-		name       string
-		configType string
-		out        string
+		formatStr string
+		out       string
 	)
 
 	flag.StringVar(&formatStr, "f", "go", "output format: go|markdown|html")
-	flag.StringVar(&pkg, "pkg", "main", "package name for generated code")
-	flag.StringVar(&name, "name", "app", "name of the flagset")
-	flag.StringVar(&configType, "config", "Config", "name for the Configuration type")
 	flag.StringVar(&out, "o", "", "output file")
 	flag.Parse()
 
@@ -41,7 +35,13 @@ func main() {
 		printExit("unknown format: %s\n", formatStr)
 	}
 
-	g, err := gen.NewGenerator(pkg, name, configType, inputPath)
+	p := gen.NewParser()
+	cfg, err := p.ParsePath(inputPath)
+	if err != nil {
+		printExit("failed to parse input file: %v\n", err)
+	}
+
+	g, err := gen.NewGenerator(cfg)
 	if err != nil {
 		printExit("failed to create generator: %v\n", err)
 	}

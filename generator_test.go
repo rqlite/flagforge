@@ -1,4 +1,4 @@
-package gen
+package flagforge
 
 import (
 	"bytes"
@@ -7,15 +7,10 @@ import (
 	"testing"
 )
 
-func Test_NewGenerator(t *testing.T) {
-	path := mustWriteToTempTOMLFile("")
-	defer os.Remove(path)
-	gen, err := NewGenerator("pkg", "name", "Config", path)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if gen == nil {
-		t.Fatalf("expected non-nil generator")
+func Test_NewParser(t *testing.T) {
+	p := NewParser()
+	if p == nil {
+		t.Fatalf("expected non-nil parser")
 	}
 }
 
@@ -32,7 +27,13 @@ func Test_Generator_SingleArgument(t *testing.T) {
 	tomlFile := mustWriteToTempTOMLFile(toml)
 	defer os.Remove(tomlFile)
 
-	gen, err := NewGenerator("pkg", "name", "Config", tomlFile)
+	parser := NewParser()
+	cfg, err := parser.ParsePath(tomlFile)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	gen, err := NewGenerator(cfg)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -60,7 +61,13 @@ func Test_Generator_SingleFlag(t *testing.T) {
 	tomlFile := mustWriteToTempTOMLFile(toml)
 	defer os.Remove(tomlFile)
 
-	gen, err := NewGenerator("pkg", "name", "Config", tomlFile)
+	parser := NewParser()
+	cfg, err := parser.ParsePath(tomlFile)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	gen, err := NewGenerator(cfg)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -95,7 +102,13 @@ func Test_Generator_GoldenFiles(t *testing.T) {
 		in := "testdata/" + f.in
 		out := "testdata/" + f.out
 
-		gen, err := NewGenerator("pkg", "name", "Config", in)
+		parser := NewParser()
+		cfg, err := parser.ParsePath(in)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		gen, err := NewGenerator(cfg)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

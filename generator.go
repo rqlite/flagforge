@@ -1,4 +1,4 @@
-package gen
+package flagforge
 
 import (
 	"bytes"
@@ -8,8 +8,6 @@ import (
 	"strings"
 	"text/template"
 	"time"
-
-	"github.com/spf13/viper"
 )
 
 const flagTemplate = `
@@ -59,7 +57,7 @@ type {{ .ConfigType }} struct {
 // Forge sets up and parses command-line flags.
 func Forge(arguments []string) (*flag.FlagSet, *{{ .ConfigType }}, error) {
 	config := &{{ .ConfigType }}{}
-	fs := flag.NewFlagSet("{{ .Name }}", flag.ExitOnError)
+	fs := flag.NewFlagSet("{{ .FSName }}", flag.{{ .FSErrorHandling }})
 {{- range $index, $element := .Args }}
 	if len(arguments) < {{ $index }} {
 		return nil, nil, fmt.Errorf("missing required argument: {{ $element.Name }}")
@@ -163,31 +161,13 @@ func (f Format) String() string {
 	}
 }
 
-// Argument represents a single argument configuration.
-type Argument struct {
-	Name      string `mapstructure:"name"`
-	Type      string `mapstructure:"type"`
-	Required  bool   `mapstructure:"required"`
-	ShortHelp string `mapstructure:"short_help"`
-	LongHelp  string `mapstructure:"long_help"`
-}
-
-// Flag represents a single flag configuration.
-type Flag struct {
-	Name      string      `mapstructure:"name"`
-	CLI       string      `mapstructure:"cli"`
-	Type      string      `mapstructure:"type"`
-	Default   interface{} `mapstructure:"default"`
-	ShortHelp string      `mapstructure:"short_help"`
-	LongHelp  string      `mapstructure:"long_help"`
-}
-
 // Generator represents a flag, HTML, or Markdown generator.
 type Generator struct {
-	pkg        string
-	name       string
-	configType string
-	path       string
+	pkg            string
+	configTypeName string
+
+	flagSetName          string
+	flagSetErrorHandling string
 
 	args  []Argument
 	flags []Flag
@@ -195,29 +175,14 @@ type Generator struct {
 
 // NewGenerator creates a new generator with the given package name, name, and
 // path to the TOML configuration file.
-func NewGenerator(pkg, name, configType, path string) (*Generator, error) {
-	viper.SetConfigFile(path)
-	viper.SetConfigType("toml")
-	if err := viper.ReadInConfig(); err != nil {
-		return nil, fmt.Errorf("failed to read TOML file: %w", err)
-	}
-
-	var args []Argument
-	if err := viper.UnmarshalKey("arguments", &args); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal arguments: %w", err)
-	}
-	var flags []Flag
-	if err := viper.UnmarshalKey("flags", &flags); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal flags: %w", err)
-	}
-
+func NewGenerator(cfg *ParsedConfig) (*Generator, error) {
 	return &Generator{
-		pkg:        pkg,
-		name:       name,
-		configType: configType,
-		path:       path,
-		args:       args,
-		flags:      flags,
+		pkg:                  cfg.GoConfig.Package,
+		configTypeName:       cfg.GoConfig.ConfigTypeName,
+		flagSetName:          cfg.GoConfig.FlagSetName,
+		flagSetErrorHandling: cfg.GoConfig.FlagErrorHandling,
+		args:                 cfg.Arguments,
+		flags:                cfg.Flags,
 	}, nil
 }
 
@@ -263,17 +228,19 @@ func (g *Generator) doGo(w io.Writer) error {
 	// Execute the template with the flags data.
 	var output bytes.Buffer
 	if err := tmpl.Execute(&output, struct {
-		Pkg        string
-		Name       string
-		ConfigType string
-		Args       []Argument
-		Flags      []Flag
+		Pkg             string
+		FSName          string
+		FSErrorHandling string
+		ConfigType      string
+		Args            []Argument
+		Flags           []Flag
 	}{
-		Pkg:        g.pkg,
-		Name:       g.name,
-		ConfigType: g.configType,
-		Args:       g.args,
-		Flags:      g.flags,
+		Pkg:             g.pkg,
+		FSName:          g.flagSetName,
+		FSErrorHandling: g.flagSetErrorHandling,
+		ConfigType:      g.configTypeName,
+		Args:            g.args,
+		Flags:           g.flags,
 	}); err != nil {
 		return err
 	}
