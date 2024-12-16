@@ -78,7 +78,7 @@ func Forge(arguments []string) (*flag.FlagSet, *{{ .ConfigType }}, error) {
 	{{- else if eq .Type "time.Duration" }}
 	fs.DurationVar(&config.{{ .Name }}, "{{ .CLI }}", mustParseDuration("{{ .Default }}"), "{{ .ShortHelp }}")
 	{{- else if eq .Type "[]string" }}
-	fs.Var(NewStringSliceValue(config.{{ .Name }}), "{{ .CLI }}", "{{ .ShortHelp }}")
+	fs.Var(NewStringSliceValue(&config.{{ .Name }}), "{{ .CLI }}", "{{ .ShortHelp }}")
 	{{- end }}
 {{- end }}
 {{- if .FSUsage }}

@@ -47,7 +47,7 @@ func Forge(arguments []string) (*flag.FlagSet, *Config, error) {
 	fs.StringVar(&config.NodeID, "-node-id", "", "Node ID")
 	fs.StringVar(&config.HTTPAddr, "-http-addr", "localhost:4001", "HTTP API bind address")
 	fs.DurationVar(&config.Interval, "-interval", mustParseDuration("10s"), "An interval of time")
-	fs.Var(NewStringSliceValue(config.List), "-list", "A slice of strings")
+	fs.Var(NewStringSliceValue(&config.List), "-list", "A slice of strings")
 	if err := fs.Parse(arguments); err != nil {
 		return nil, nil, err
 	}
