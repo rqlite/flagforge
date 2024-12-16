@@ -79,6 +79,10 @@ func Forge(arguments []string) (*flag.FlagSet, *{{ .ConfigType }}, error) {
 	fs.BoolVar(&config.{{ .Name }}, "{{ .CLI }}", {{ .Default }}, "{{ .ShortHelp }}")
 	{{- else if eq .Type "int" }}
 	fs.IntVar(&config.{{ .Name }}, "{{ .CLI }}", {{ .Default }}, "{{ .ShortHelp }}")
+	{{- else if eq .Type "uint64" }}
+	fs.Uint64Var(&config.{{ .Name }}, "{{ .CLI }}", {{ .Default }}, "{{ .ShortHelp }}")
+	{{- else if eq .Type "int64" }}
+	fs.Int64Var(&config.{{ .Name }}, "{{ .CLI }}", {{ .Default }}, "{{ .ShortHelp }}")
 	{{- else if eq .Type "time.Duration" }}
 	fs.DurationVar(&config.{{ .Name }}, "{{ .CLI }}", mustParseDuration("{{ .Default }}"), "{{ .ShortHelp }}")
 	{{- else if eq .Type "[]string" }}
