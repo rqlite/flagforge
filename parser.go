@@ -11,6 +11,7 @@ import (
 type GoConfig struct {
 	Package           string `mapstructure:"package"`
 	ConfigTypeName    string `mapstructure:"config_type_name"`
+	FlagSetUsage      string `mapstructure:"flag_set_usage"`
 	FlagSetName       string `mapstructure:"flag_set_name"`
 	FlagErrorHandling string `mapstructure:"flag_error_handling"`
 }

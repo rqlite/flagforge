@@ -79,6 +79,10 @@ func Forge(arguments []string) (*flag.FlagSet, *{{ .ConfigType }}, error) {
 	fs.Var(NewStringSliceValue(config.{{ .Name }}), "{{ .CLI }}", "{{ .ShortHelp }}")
 	{{- end }}
 {{- end }}
+	fs.Usage = func() {
+		fmt.Fprintf(os.Stderr, "{{. FSUsage }}")
+		fs.PrintDefaults()
+	}
     if err := fs.Parse(arguments); err != nil {
 	    return nil, nil, err
     }
@@ -166,6 +170,7 @@ type Generator struct {
 	pkg            string
 	configTypeName string
 
+	flagSetUsage         string
 	flagSetName          string
 	flagSetErrorHandling string
 
@@ -179,6 +184,7 @@ func NewGenerator(cfg *ParsedConfig) (*Generator, error) {
 	return &Generator{
 		pkg:                  cfg.GoConfig.Package,
 		configTypeName:       cfg.GoConfig.ConfigTypeName,
+		flagSetUsage:         cfg.GoConfig.FlagSetUsage,
 		flagSetName:          cfg.GoConfig.FlagSetName,
 		flagSetErrorHandling: cfg.GoConfig.FlagErrorHandling,
 		args:                 cfg.Arguments,
@@ -229,6 +235,7 @@ func (g *Generator) doGo(w io.Writer) error {
 	var output bytes.Buffer
 	if err := tmpl.Execute(&output, struct {
 		Pkg             string
+		FSUsage         string
 		FSName          string
 		FSErrorHandling string
 		ConfigType      string
@@ -236,6 +243,7 @@ func (g *Generator) doGo(w io.Writer) error {
 		Flags           []Flag
 	}{
 		Pkg:             g.pkg,
+		FSUsage:         g.flagSetUsage,
 		FSName:          g.flagSetName,
 		FSErrorHandling: g.flagSetErrorHandling,
 		ConfigType:      g.configTypeName,
