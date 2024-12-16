@@ -98,6 +98,10 @@ func Test_Generator_GoldenFiles(t *testing.T) {
 			in:  "multi-argument-flag/in.toml",
 			out: "multi-argument-flag/out.go",
 		},
+		{
+			in:  "rqlite/in.toml",
+			out: "rqlite/out.go",
+		},
 	} {
 		in := "testdata/" + f.in
 		out := "testdata/" + f.out
