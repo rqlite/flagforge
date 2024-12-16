@@ -79,10 +79,12 @@ func Forge(arguments []string) (*flag.FlagSet, *{{ .ConfigType }}, error) {
 	fs.Var(NewStringSliceValue(config.{{ .Name }}), "{{ .CLI }}", "{{ .ShortHelp }}")
 	{{- end }}
 {{- end }}
+{{- if .FSUsage }}
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "{{. FSUsage }}")
+		fmt.Fprintf(os.Stderr, "{{ .FSUsage }}")
 		fs.PrintDefaults()
 	}
+{{- end }}
     if err := fs.Parse(arguments); err != nil {
 	    return nil, nil, err
     }
