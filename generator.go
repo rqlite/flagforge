@@ -59,7 +59,7 @@ func Forge(arguments []string) (*flag.FlagSet, *{{ .ConfigType }}, error) {
 	config := &{{ .ConfigType }}{}
 	fs := flag.NewFlagSet("{{ .FSName }}", flag.{{ .FSErrorHandling }})
 {{- range $index, $element := .Args }}
-	if len(arguments) < {{ $index }} {
+	if len(arguments) <= {{ $index }} {
 		return nil, nil, fmt.Errorf("missing required argument: {{ $element.Name }}")
 	}
 	{{- if eq .Type "string" }}
