@@ -52,7 +52,7 @@ func (p *Parser) ParsePath(path string) (*ParsedConfig, error) {
 	v := getViper()
 	v.SetConfigFile(path)
 	if err := v.ReadInConfig(); err != nil {
-		return nil, fmt.Errorf("failed to read TOML file: %w", err)
+		return nil, fmt.Errorf("failed to read TOML file at %s: %w", path, err)
 	}
 	return parseConfig(v)
 }

@@ -43,7 +43,7 @@ type Config struct {
 func Forge(arguments []string) (*flag.FlagSet, *Config, error) {
 	config := &Config{}
 	fs := flag.NewFlagSet("name", flag.ExitOnError)
-	if len(arguments) < 0 {
+	if len(arguments) <= 0 {
 		return nil, nil, fmt.Errorf("missing required argument: DataDir")
 	}
 	config.DataDir = arguments[0]

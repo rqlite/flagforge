@@ -17,6 +17,9 @@ package {{ .Pkg }}
 import (
 	"flag"
 	"fmt"
+{{- if .FSUsage }}
+	"os"
+{{- end }}
 	"strings"
 	"time"
 )
