@@ -29,6 +29,7 @@ type StringSliceValue struct {
 	ss *[]string
 }
 
+// NewStringSliceValue returns an initialized StringSliceValue.
 func NewStringSliceValue(ss *[]string) *StringSliceValue {
 	return &StringSliceValue{ss}
 }
