@@ -36,6 +36,9 @@ func NewStringSliceValue(ss *[]string) *StringSliceValue {
 
 // String returns a string representation of the StringSliceValue.
 func (s *StringSliceValue) String() string {
+	if s.ss == nil {
+		return ""
+	}
 	return fmt.Sprintf("%v", *s.ss)
 }
 
