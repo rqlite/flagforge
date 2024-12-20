@@ -49,12 +49,12 @@ func Forge(arguments []string) (*flag.FlagSet, *Config, error) {
 	if len(arguments) <= 0 {
 		return nil, nil, fmt.Errorf("missing required argument: DataDir")
 	}
-	config.DataDir = fs.Arg(0)
 	fs.StringVar(&config.NodeID, "-node-id", "", "Node ID")
 	fs.StringVar(&config.HTTPAddr, "-http-addr", "localhost:4001", "HTTP API bind address")
 	if err := fs.Parse(arguments); err != nil {
 		return nil, nil, err
 	}
+	config.DataDir = fs.Arg(0)
 	return fs, config, nil
 }
 
