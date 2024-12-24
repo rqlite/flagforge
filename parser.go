@@ -30,6 +30,7 @@ type Flag struct {
 	Name      string      `mapstructure:"name"`
 	CLI       string      `mapstructure:"cli"`
 	Type      string      `mapstructure:"type"`
+	Delimiter string      `mapstructure:"delimiter"`
 	Default   interface{} `mapstructure:"default"`
 	ShortHelp string      `mapstructure:"short_help"`
 	LongHelp  string      `mapstructure:"long_help"`

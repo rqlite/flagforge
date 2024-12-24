@@ -27,3 +27,11 @@ name = "List"
 cli = "-list"
 type = "[]string"
 short_help = "A slice of strings"
+
+[[flags]]
+name = "List2"
+cli = "-list2"
+type = "[]string"
+delimiter = "#"
+default = "foo"
+short_help = "Another slice of strings with a default and explicit delimiter"

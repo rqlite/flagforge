@@ -17,36 +17,10 @@ package {{ .Pkg }}
 import (
 	"flag"
 	"fmt"
-{{- if .FSUsage }}
 	"os"
-{{- end }}
-	"strings"
+    "strings"
 	"time"
 )
-
-// StringSlice wraps a string slice and implements the flag.Value interface.
-type StringSliceValue struct {
-	ss *[]string
-}
-
-// NewStringSliceValue returns an initialized StringSliceValue.
-func NewStringSliceValue(ss *[]string) *StringSliceValue {
-	return &StringSliceValue{ss}
-}
-
-// String returns a string representation of the StringSliceValue.
-func (s *StringSliceValue) String() string {
-	if s.ss == nil {
-		return ""
-	}
-	return fmt.Sprintf("%v", *s.ss)
-}
-
-// Set sets the value of the StringSliceValue.
-func (s *StringSliceValue) Set(value string) error {
-	*s.ss = strings.Split(value, ",")
-	return nil
-}
 
 // {{ .ConfigType }} represents all configuration options.
 type {{ .ConfigType }} struct {
@@ -66,7 +40,7 @@ func Forge(arguments []string) (*flag.FlagSet, *{{ .ConfigType }}, error) {
 	fs := flag.NewFlagSet("{{ .FSName }}", flag.{{ .FSErrorHandling }})
 {{- range $index, $element := .Args }}
 	if len(arguments) <= {{ $index }} {
-		return nil, nil, fmt.Errorf("missing required argument: {{ $element.Name }}")
+		return nil, nil, fmtError("missing required argument: {{ $element.Name }}")
 	}
 {{- end }}
 {{- range .Flags }}
@@ -83,12 +57,13 @@ func Forge(arguments []string) (*flag.FlagSet, *{{ .ConfigType }}, error) {
 	{{- else if eq .Type "time.Duration" }}
 	fs.DurationVar(&config.{{ .Name }}, "{{ .CLI }}", mustParseDuration("{{ .Default }}"), "{{ .ShortHelp }}")
 	{{- else if eq .Type "[]string" }}
-	fs.Var(NewStringSliceValue(&config.{{ .Name }}), "{{ .CLI }}", "{{ .ShortHelp }}")
+	var tmp{{ .Name }} string
+	fs.StringVar(&tmp{{ .Name }}, "{{ .CLI }}", "{{ .Default }}", "{{ .ShortHelp }}")
 	{{- end }}
 {{- end }}
 {{- if .FSUsage }}
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "{{ .FSUsage }}")
+		usage("{{ .FSUsage }}")
 		fs.PrintDefaults()
 	}
 {{- end }}
@@ -98,6 +73,11 @@ func Forge(arguments []string) (*flag.FlagSet, *{{ .ConfigType }}, error) {
 {{- range $index, $element := .Args }}
 	{{- if eq .Type "string" }}
 	    config.{{ .Name }} = fs.Arg({{ $index }})
+	{{- end }}
+{{- end }}
+{{- range $index, $element := .Flags }}
+	{{- if eq .Type "[]string" }}
+	    config.{{ .Name }} = splitString(tmp{{ .Name }}, "{{ .Delimiter }}")
 	{{- end }}
 {{- end }}
 	return fs, config, nil
@@ -111,6 +91,17 @@ func mustParseDuration(d string) time.Duration {
 	return td
 }
 
+func splitString(s, sep string) []string {
+	return strings.Split(s, sep)
+}
+
+func fmtError(msg string) error {
+	return fmt.Errorf(msg)
+}
+
+func usage(msg string) {
+	fmt.Fprintf(os.Stderr, msg)
+}
 `
 
 const htmlTemplate = `
@@ -229,10 +220,10 @@ func (g *Generator) doGo(w io.Writer) error {
 	}
 
 	// Perform some checks of the flags.
-	for _, flag := range g.flags {
+	for i, flag := range g.flags {
 		if flag.Type == "time.Duration" {
 			if flag.Default == nil {
-				flag.Default = 0
+				g.flags[i].Default = 0
 			} else {
 				s, ok := flag.Default.(string)
 				if !ok {
@@ -241,6 +232,14 @@ func (g *Generator) doGo(w io.Writer) error {
 				if _, err := time.ParseDuration(s); err != nil {
 					return fmt.Errorf("time.Duration flag %s has invalid default: %v", flag.Name, err)
 				}
+			}
+		}
+		if flag.Type == "[]string" {
+			if flag.Delimiter == "" {
+				g.flags[i].Delimiter = ","
+			}
+			if flag.Default == nil {
+				g.flags[i].Default = ""
 			}
 		}
 	}
@@ -264,7 +263,7 @@ func (g *Generator) doGo(w io.Writer) error {
 		Args:            g.args,
 		Flags:           g.flags,
 	}); err != nil {
-		return err
+		return fmt.Errorf("failed to execute template: %w", err)
 	}
 
 	// Format the Go source.

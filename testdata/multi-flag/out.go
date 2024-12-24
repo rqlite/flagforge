@@ -4,33 +4,10 @@ package pkg
 import (
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 )
-
-// StringSlice wraps a string slice and implements the flag.Value interface.
-type StringSliceValue struct {
-	ss *[]string
-}
-
-// NewStringSliceValue returns an initialized StringSliceValue.
-func NewStringSliceValue(ss *[]string) *StringSliceValue {
-	return &StringSliceValue{ss}
-}
-
-// String returns a string representation of the StringSliceValue.
-func (s *StringSliceValue) String() string {
-	if s.ss == nil {
-		return ""
-	}
-	return fmt.Sprintf("%v", *s.ss)
-}
-
-// Set sets the value of the StringSliceValue.
-func (s *StringSliceValue) Set(value string) error {
-	*s.ss = strings.Split(value, ",")
-	return nil
-}
 
 // Config represents all configuration options.
 type Config struct {
@@ -42,6 +19,8 @@ type Config struct {
 	Interval time.Duration
 	// A slice of strings
 	List []string
+	// Another slice of strings with a default and explicit delimiter
+	List2 []string
 }
 
 // Forge sets up and parses command-line flags.
@@ -51,10 +30,15 @@ func Forge(arguments []string) (*flag.FlagSet, *Config, error) {
 	fs.StringVar(&config.NodeID, "-node-id", "", "Node ID")
 	fs.StringVar(&config.HTTPAddr, "-http-addr", "localhost:4001", "HTTP API bind address")
 	fs.DurationVar(&config.Interval, "-interval", mustParseDuration("10s"), "An interval of time")
-	fs.Var(NewStringSliceValue(&config.List), "-list", "A slice of strings")
+	var tmpList string
+	fs.StringVar(&tmpList, "-list", "", "A slice of strings")
+	var tmpList2 string
+	fs.StringVar(&tmpList2, "-list2", "foo", "Another slice of strings with a default and explicit delimiter")
 	if err := fs.Parse(arguments); err != nil {
 		return nil, nil, err
 	}
+	config.List = splitString(tmpList, ",")
+	config.List2 = splitString(tmpList2, "#")
 	return fs, config, nil
 }
 
@@ -64,4 +48,16 @@ func mustParseDuration(d string) time.Duration {
 		panic(err)
 	}
 	return td
+}
+
+func splitString(s, sep string) []string {
+	return strings.Split(s, sep)
+}
+
+func fmtError(msg string) error {
+	return fmt.Errorf(msg)
+}
+
+func usage(msg string) {
+	fmt.Fprintf(os.Stderr, msg)
 }
