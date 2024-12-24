@@ -134,7 +134,7 @@ th {
 	</tr>
 	{{- range .Flags }}
 	<tr>
-		<td><code>{{ .CLI | html }}</code></td>
+		<td><code>-{{ .CLI | html }}</code></td>
 		<td>{{ .ShortHelp | html }}.
 		{{- if .LongHelp }}
 		    <br><br>{{ .LongHelp | html }}
