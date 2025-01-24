@@ -13,5 +13,5 @@ flagforge -f go|markdown|html <TOML file>
 ## Example usage
 [rqlite](https://www.rqlite.io) uses flagforge to generate the code and documentation for its extensive set of command-line flags:
 - [rqlite TOML file](https://github.com/rqlite/rqlite/blob/v8.36.8/cmd/rqlited/flags.toml)
-- [Generated Go code](https://github.com/rqlite/rqlite/blob/v8.36.8/cmd/rqlited/config_flags.go) for command-line flag parsing.
+- [Generated Go code](https://github.com/rqlite/rqlite/blob/v8.36.8/cmd/rqlited/config_flags.go) for command-line flag parsing, and then [calling the generated code](https://github.com/rqlite/rqlite/blob/v8.36.8/cmd/rqlited/flags.go#L297) from rqlite.
 - Example of [automatically generated HTML documentation](https://rqlite.io/docs/guides/config/) for the flags.
