@@ -2,7 +2,7 @@
 
 [![Circle CI](https://circleci.com/gh/rqlite/flagforge/tree/master.svg?style=svg)](https://circleci.com/gh/rqlite/flagforge/tree/master)
 
-_flagforge_ allows you to automatically generate Go [flag](https://pkg.go.dev/flag) code, as well as the associated Markdown and HTML documentation for those flags, using a single configuration. This means you only have to define your command-line options once in a TOML file, and _flagforge_ will do the rest.
+_flagforge_ allows you to automatically generate Go [flag](https://pkg.go.dev/flag) code, as well as the associated Markdown and HTML documentation for those flags, using a single configuration file. This means you only have to define your command-line options once in a TOML file, and _flagforge_ will do the rest.
 
 ## Running _flagforge_
 Clone the repo and execute `go build`. Pass `-h` to `flagforge` to learn how to use it.
