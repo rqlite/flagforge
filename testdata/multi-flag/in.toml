@@ -35,3 +35,11 @@ type = "[]string"
 delimiter = "#"
 default = "foo"
 short_help = "Another slice of strings with a default and explicit delimiter"
+
+[[flags]]
+name = "ConfigFile"
+cli = "-config-file"
+type = "filepath"
+default = ""
+short_help = "path to config file"
+long_help = "path to a configuration file"

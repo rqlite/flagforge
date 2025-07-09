@@ -30,7 +30,11 @@ type {{ .ConfigType }} struct {
 {{- end }}
 {{- range .Flags }}
 	// {{ .ShortHelp }}
+	{{- if eq .Type "filepath" }}
+	{{ .Name }} string ` + "`filepath:\"true\"`" + `
+	{{- else }}
 	{{ .Name }} {{ .Type }}
+	{{- end }}
 {{- end }}
 }
 
@@ -44,7 +48,7 @@ func Forge(arguments []string) (*flag.FlagSet, *{{ .ConfigType }}, error) {
 	}
 {{- end }}
 {{- range .Flags }}
-	{{- if eq .Type "string" }}
+	{{- if or (eq .Type "string") (eq .Type "filepath") }}
 	fs.StringVar(&config.{{ .Name }}, "{{ .CLI }}", "{{ .Default }}", "{{ .ShortHelp }}")
 	{{- else if eq .Type "bool" }}
 	fs.BoolVar(&config.{{ .Name }}, "{{ .CLI }}", {{ .Default }}, "{{ .ShortHelp }}")
