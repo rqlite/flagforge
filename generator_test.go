@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -78,6 +79,60 @@ func Test_Generator_SingleFlag(t *testing.T) {
 	err = gen.Execute(Go, tempFD)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func Test_Generator_FilepathFlag(t *testing.T) {
+	toml := `
+	[[flags]]
+	name = "myfile"
+	cli = "-myfile"
+	type = "filepath"
+	default = ""
+	short_help = "file path"
+	long_help = "path to a file"
+	`
+
+	tomlFile := mustWriteToTempTOMLFile(toml)
+	defer os.Remove(tomlFile)
+
+	parser := NewParser()
+	cfg, err := parser.ParsePath(tomlFile)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	gen, err := NewGenerator(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	tempFD := mustTempFD()
+	defer os.Remove(tempFD.Name())
+	defer tempFD.Close()
+	err = gen.Execute(Go, tempFD)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Read the generated content and verify it contains the filepath tag
+	tempFD.Seek(0, 0)
+	generated := mustReadFile(tempFD.Name())
+	content := string(generated)
+	
+	// Check that the struct tag is present
+	if !strings.Contains(content, "`filepath:\"true\"`") {
+		t.Errorf("generated code does not contain expected filepath struct tag")
+	}
+	
+	// Check that the field type is string
+	if !strings.Contains(content, "myfile string `filepath:\"true\"`") {
+		t.Errorf("generated code does not contain expected field declaration")
+	}
+	
+	// Check that StringVar is used for parsing
+	if !strings.Contains(content, "fs.StringVar(&config.myfile, \"-myfile\", \"\", \"file path\")") {
+		t.Errorf("generated code does not contain expected StringVar call")
 	}
 }
 
