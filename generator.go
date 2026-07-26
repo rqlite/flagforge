@@ -112,30 +112,16 @@ func usage(msg string) {
 }
 `
 
-const htmlTemplate = `
-<!DOCTYPE html>
-<html>
-<head>
-<style>
-table {
-	width: 100%;
-	border-collapse: collapse;
-}
-th, td {
-	border: 1px solid #ddd;
-	padding: 8px;
-}
-th {
-	background-color: #f2f2f2;
-	text-align: left;
-}
-.col-cli { width: 30%; }
-.col-usage { width: 70%; }
-</style>
-</head>
-<body>
+// htmlSectionTemplate renders a single section: an optional Markdown heading
+// followed by a table of that section's flags. The output is a fragment, not a
+// complete HTML document, so that it can be embedded directly in a page which
+// supplies its own styling -- the table carries the "rq-flags" class for that
+// purpose. Headings are Markdown rather than <h2> so that a static site
+// generator treats them as real headings, and so gives them anchors and a place
+// in the page's table of contents.
+const htmlSectionTemplate = `{{ if .Name }}## {{ .Name }}
 
-<table>
+{{ end }}<table class="rq-flags">
 	<tr>
 		<th class="col-cli">Flag</th>
 		<th class="col-usage">Usage</th>
@@ -150,9 +136,6 @@ th {
 	</tr>
 	{{- end }}
 </table>
-
-</body>
-</html>
 `
 
 // Format represents the output format of the generator.
@@ -286,28 +269,38 @@ func (g *Generator) doGo(w io.Writer) error {
 }
 
 func (g *Generator) doMarkdown(w io.Writer) error {
-	// Write the markdown table header.
-	_, err := w.Write([]byte("| Flag | Usage |\n|-|-|\n"))
+	sections, err := groupBySection(g.flags)
 	if err != nil {
 		return err
 	}
 
-	// Write each flag as a row in the table.
-	for _, flag := range g.flags {
+	for i, section := range sections {
 		builder := strings.Builder{}
-		builder.WriteString("|")
-		builder.WriteString(escapeMarkdown(flag.CLI))
-		builder.WriteString("|")
-		builder.WriteString(escapeMarkdown(flag.ShortHelp))
-		if flag.Default != nil {
-			if !strings.HasSuffix(flag.ShortHelp, ".") {
-				builder.WriteString(".")
-			}
-			builder.WriteString(fmt.Sprintf(" %s", escapeMarkdown(flag.LongHelp)))
+		if i > 0 {
+			builder.WriteString("\n")
 		}
-		builder.WriteString("|\n")
-		_, err = w.Write([]byte(builder.String()))
-		if err != nil {
+		if section.Name != "" {
+			builder.WriteString(fmt.Sprintf("## %s\n\n", section.Name))
+		}
+
+		// Write the markdown table header.
+		builder.WriteString("| Flag | Usage |\n|-|-|\n")
+
+		// Write each flag as a row in the table.
+		for _, flag := range section.Flags {
+			builder.WriteString("|")
+			builder.WriteString(escapeMarkdown(flag.CLI))
+			builder.WriteString("|")
+			builder.WriteString(escapeMarkdown(flag.ShortHelp))
+			if flag.Default != nil {
+				if !strings.HasSuffix(flag.ShortHelp, ".") {
+					builder.WriteString(".")
+				}
+				builder.WriteString(fmt.Sprintf(" %s", escapeMarkdown(flag.LongHelp)))
+			}
+			builder.WriteString("|\n")
+		}
+		if _, err := w.Write([]byte(builder.String())); err != nil {
 			return err
 		}
 	}
@@ -315,28 +308,84 @@ func (g *Generator) doMarkdown(w io.Writer) error {
 }
 
 func (g *Generator) doHTML(w io.Writer) error {
+	sections, err := groupBySection(g.flags)
+	if err != nil {
+		return err
+	}
+
 	// Parse the template.
 	tmpl, err := template.New("htmlTable").Funcs(template.FuncMap{
 		"html": func(s string) string {
 			return template.HTMLEscapeString(s)
 		},
-	}).Parse(htmlTemplate)
+	}).Parse(htmlSectionTemplate)
 	if err != nil {
-		return fmt.Errorf("Error parsing HTML template: %v", err)
+		return fmt.Errorf("failed to parse HTML template: %w", err)
 	}
 
-	// Execute the template with the flags data.
+	// Execute the template once per section, separating each from the last with
+	// a blank line.
 	var output bytes.Buffer
-	if err := tmpl.Execute(&output, struct {
-		Flags []Flag
-	}{Flags: g.flags}); err != nil {
-		return fmt.Errorf("Error executing HTML template: %v", err)
+	for i, section := range sections {
+		if i > 0 {
+			output.WriteString("\n")
+		}
+		if err := tmpl.Execute(&output, section); err != nil {
+			return fmt.Errorf("failed to execute HTML template: %w", err)
+		}
 	}
 
 	if _, err := w.Write(output.Bytes()); err != nil {
-		return fmt.Errorf("Error writing HTML file: %v", err)
+		return fmt.Errorf("failed to write HTML: %w", err)
 	}
 	return nil
+}
+
+// section is a named group of flags, used by the documentation generators.
+type section struct {
+	Name  string
+	Flags []Flag
+}
+
+// groupBySection groups flags by their section key, ordering the sections by
+// first appearance in the configuration file. If no flag declares a section a
+// single anonymous section holding every flag is returned, so that output for
+// configuration files which don't use sections is unchanged.
+//
+// Declaring a section on some flags but not others is an error. Silently
+// sweeping the remainder into a catch-all group would mean that every flag
+// added from then on would quietly land there, which is exactly the drift
+// sections exist to prevent.
+func groupBySection(flags []Flag) ([]section, error) {
+	var unassigned []string
+	assigned := false
+	for _, flag := range flags {
+		if flag.Section == "" {
+			unassigned = append(unassigned, flag.CLI)
+		} else {
+			assigned = true
+		}
+	}
+	if !assigned {
+		return []section{{Flags: flags}}, nil
+	}
+	if len(unassigned) > 0 {
+		return nil, fmt.Errorf("some flags declare a section but these do not: %s",
+			strings.Join(unassigned, ", "))
+	}
+
+	var sections []section
+	indexes := make(map[string]int)
+	for _, flag := range flags {
+		i, ok := indexes[flag.Section]
+		if !ok {
+			i = len(sections)
+			indexes[flag.Section] = i
+			sections = append(sections, section{Name: flag.Section})
+		}
+		sections[i].Flags = append(sections[i].Flags, flag)
+	}
+	return sections, nil
 }
 
 // escapeMarkdown escapes markdown special characters.
