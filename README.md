@@ -10,7 +10,7 @@ Clone the repo and execute `go build`. Pass `-h` to `flagforge` to learn how to 
 flagforge -f go|markdown|html <TOML file>
 ```
 
-Pass `-header <file>` to copy the contents of a file to the output before the generated content. This is how a generated documentation page keeps hand-written material -- front matter, an introduction -- that would otherwise be lost every time the page is regenerated.
+Pass `-p <file>` to copy the contents of a file to the output before the generated content. This is how a generated documentation page keeps hand-written material -- front matter, an introduction -- that would otherwise be lost every time the page is regenerated.
 
 ## Grouping flags into sections
 Give a flag an optional `section` key and the generated Markdown and HTML documentation will group flags under a heading of that name:
