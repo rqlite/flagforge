@@ -17,7 +17,7 @@ func main() {
 
 	flag.StringVar(&formatStr, "f", "go", "output format: go|markdown|html")
 	flag.StringVar(&out, "o", "", "output file")
-	flag.StringVar(&header, "header", "", "path to a file to copy to the output before the generated content")
+	flag.StringVar(&header, "p", "", "path to a file to copy to the output before the generated content")
 	flag.Parse()
 
 	if flag.NArg() < 1 {
