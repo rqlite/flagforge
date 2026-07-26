@@ -1,0 +1,36 @@
+[[flags]]
+name = "NodeID"
+cli = "node-id"
+type = "string"
+default = ""
+short_help = "Unique ID for node"
+long_help = """
+Once set a node's ID cannot change.
+"""
+section = "General"
+
+[[flags]]
+name = "HTTPAddr"
+cli = "http-addr"
+type = "string"
+default = "localhost:4001"
+short_help = "HTTP server bind address"
+section = "HTTP API"
+
+[[flags]]
+name = "HTTPAdvAddr"
+cli = "http-adv-addr"
+type = "string"
+default = ""
+short_help = "Advertised HTTP address"
+section = "HTTP API"
+
+# Out of order on purpose: this flag belongs to a section which has already
+# appeared, so it must be grouped with it rather than opening a third section.
+[[flags]]
+name = "ShowVersion"
+cli = "version"
+type = "bool"
+default = false
+short_help = "Show version information and exit"
+section = "General"

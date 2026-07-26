@@ -34,6 +34,10 @@ type Flag struct {
 	Default   interface{} `mapstructure:"default"`
 	ShortHelp string      `mapstructure:"short_help"`
 	LongHelp  string      `mapstructure:"long_help"`
+
+	// Section groups the flag with others in the generated documentation. It is
+	// ignored by the Go generator.
+	Section string `mapstructure:"section"`
 }
 
 type ParsedConfig struct {

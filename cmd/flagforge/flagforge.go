@@ -12,10 +12,12 @@ func main() {
 	var (
 		formatStr string
 		out       string
+		header    string
 	)
 
 	flag.StringVar(&formatStr, "f", "go", "output format: go|markdown|html")
 	flag.StringVar(&out, "o", "", "output file")
+	flag.StringVar(&header, "header", "", "path to a file to copy to the output before the generated content")
 	flag.Parse()
 
 	if flag.NArg() < 1 {
@@ -53,6 +55,15 @@ func main() {
 			printExit("failed to create output file: %v\n", err)
 		}
 		defer w.Close()
+	}
+	if header != "" {
+		b, err := os.ReadFile(header)
+		if err != nil {
+			printExit("failed to read header file: %v\n", err)
+		}
+		if _, err := w.Write(b); err != nil {
+			printExit("failed to write header: %v\n", err)
+		}
 	}
 	if err := g.Execute(f, w); err != nil {
 		printExit("failed to generate output: %v\n", err)
