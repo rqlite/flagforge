@@ -38,6 +38,9 @@ type Flag struct {
 	// Section groups the flag with others in the generated documentation. It is
 	// ignored by the Go generator.
 	Section string `mapstructure:"section"`
+
+	// Hide excludes the flag from all generated output when set to true.
+	Hide bool `mapstructure:"hide"`
 }
 
 type ParsedConfig struct {

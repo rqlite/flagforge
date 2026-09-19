@@ -103,6 +103,10 @@ func Test_Generator_GoldenFiles(t *testing.T) {
 			in:  "rqlite/in.toml",
 			out: "rqlite/out.go",
 		},
+		{
+			in:  "hide/in.toml",
+			out: "hide/out.go",
+		},
 	} {
 		in := "testdata/" + f.in
 		out := "testdata/" + f.out
@@ -144,6 +148,10 @@ func Test_Generator_HTMLGoldenFiles(t *testing.T) {
 		{
 			in:  "sections/in.toml",
 			out: "sections/out.html",
+		},
+		{
+			in:  "hide/in.toml",
+			out: "hide/out.html",
 		},
 	} {
 		in := "testdata/" + f.in
