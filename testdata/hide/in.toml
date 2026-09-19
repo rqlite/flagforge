@@ -1,0 +1,20 @@
+[Go]
+package = "main"
+flag_set_name = "rqlited"
+
+[[flags]]
+name = "NodeID"
+cli = "node-id"
+type = "string"
+default = ""
+short_help = "Unique ID for node"
+section = "General"
+
+[[flags]]
+name = "QueryLog"
+cli = "query-log"
+type = "string"
+default = ""
+short_help = "Enable query logging"
+section = "SQLite database"
+hide = true

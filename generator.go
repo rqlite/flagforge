@@ -161,6 +161,17 @@ func (f Format) String() string {
 	}
 }
 
+// visibleFlags returns a copy of flags with hidden entries removed.
+func visibleFlags(flags []Flag) []Flag {
+	var out []Flag
+	for _, f := range flags {
+		if !f.Hide {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
 // Generator represents a flag, HTML, or Markdown generator.
 type Generator struct {
 	pkg            string
@@ -252,7 +263,7 @@ func (g *Generator) doGo(w io.Writer) error {
 		FSErrorHandling: g.flagSetErrorHandling,
 		ConfigType:      g.configTypeName,
 		Args:            g.args,
-		Flags:           g.flags,
+		Flags:           visibleFlags(g.flags),
 	}); err != nil {
 		return fmt.Errorf("failed to execute template: %w", err)
 	}
@@ -269,7 +280,7 @@ func (g *Generator) doGo(w io.Writer) error {
 }
 
 func (g *Generator) doMarkdown(w io.Writer) error {
-	sections, err := groupBySection(g.flags)
+	sections, err := groupBySection(visibleFlags(g.flags))
 	if err != nil {
 		return err
 	}
@@ -308,7 +319,7 @@ func (g *Generator) doMarkdown(w io.Writer) error {
 }
 
 func (g *Generator) doHTML(w io.Writer) error {
-	sections, err := groupBySection(g.flags)
+	sections, err := groupBySection(visibleFlags(g.flags))
 	if err != nil {
 		return err
 	}
