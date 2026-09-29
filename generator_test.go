@@ -3,7 +3,11 @@ package flagforge
 import (
 	"bytes"
 	"fmt"
+	"go/ast"
+	goparser "go/parser"
+	"go/token"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -12,6 +16,64 @@ func Test_NewParser(t *testing.T) {
 	p := NewParser()
 	if p == nil {
 		t.Fatalf("expected non-nil parser")
+	}
+}
+
+func Test_Generator_UsageEscapes(t *testing.T) {
+	for _, tc := range []struct {
+		name, toml, want string
+	}{
+		{"legacy literal", `'\nUsage:\n\texample [flags]\n'`, "\nUsage:\n\texample [flags]\n"},
+		{"basic string", `"\nUsage:\n\texample [flags]\n"`, "\nUsage:\n\texample [flags]\n"},
+		{"literal quotes", `'\nUse "example"\n'`, "\nUse \"example\"\n"},
+		{"escaped quotes", `'\nUse \"example\"\n'`, "\nUse \"example\"\n"},
+		{"literal backslash", `'Print \\n literally'`, `Print \n literally`},
+		{"unknown escape", `'Keep \path'`, `Keep \path`},
+		{"unicode and byte escapes", `'\u2192 \xff'`, "→ \xff"},
+		{"multiline", "'''Usage:\n  example [flags]\n'''", "Usage:\n  example [flags]\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, err := NewParser().ParseReader(strings.NewReader("[go]\nflag_set_usage = " + tc.toml + "\n"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			g, err := NewGenerator(cfg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var output bytes.Buffer
+			if err := g.Execute(Go, &output); err != nil {
+				t.Fatal(err)
+			}
+			file, err := goparser.ParseFile(token.NewFileSet(), "generated.go", output.Bytes(), 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			found := false
+			ast.Inspect(file, func(node ast.Node) bool {
+				call, ok := node.(*ast.CallExpr)
+				if !ok {
+					return true
+				}
+				fn, ok := call.Fun.(*ast.Ident)
+				if !ok || fn.Name != "usage" {
+					return true
+				}
+				found = true
+				literal, ok := call.Args[0].(*ast.BasicLit)
+				if !ok {
+					t.Fatal("usage argument is not a string literal")
+				}
+				got, err := strconv.Unquote(literal.Value)
+				if err != nil || got != tc.want {
+					t.Errorf("usage text = %q, want %q; error: %v", got, tc.want, err)
+				}
+				return true
+			})
+			if !found {
+				t.Fatal("no usage call generated")
+			}
+		})
 	}
 }
 

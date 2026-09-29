@@ -183,6 +183,11 @@ The configured flag error policy still applies: the default `ExitOnError` can
 terminate the process rather than return an error.
 
 Custom usage writes its text to stderr and then calls `fs.PrintDefaults()`.
+For compatibility with existing configurations, usage text interprets Go escape
+sequences before the result is quoted for generated source. Thus a TOML literal
+usage string containing `\n` still produces actual line breaks. Actual newlines
+and quotes also work, and unknown escape sequences are preserved. This usage
+compatibility rule does not apply to flag defaults or help text.
 Ordinary flag parsing behavior is inherited from Go, including stopping at the
 first positional argument. Extra positional arguments remain available through
 the returned flag set.

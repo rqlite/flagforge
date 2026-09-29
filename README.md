@@ -38,9 +38,11 @@ Positional arguments support `type = "string"`. Mark required arguments with
 are checked after parsing flags. `flag_error_handling` accepts `ContinueOnError`,
 `ExitOnError` (the default), or `PanicOnError`.
 
-Text is preserved as decoded from TOML. Use a TOML basic string such as
-`flag_set_usage = "Usage:\n  example [flags]\n"` for newlines; literal strings
-in single quotes preserve backslashes.
+Flag values and help text are preserved as decoded from TOML. For compatibility,
+`flag_set_usage` also interprets Go escape sequences, so both the original
+`flag_set_usage = 'Usage:\n  example [flags]\n'` form and TOML basic or multiline
+strings produce line breaks. Use `\\` in a TOML literal usage string for a literal
+backslash. Unknown usage escape sequences are preserved.
 
 ## Grouping flags into sections
 Give a flag an optional `section` key and the generated Markdown and HTML documentation will group flags under a heading of that name:

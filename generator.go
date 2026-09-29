@@ -63,7 +63,7 @@ func Forge(arguments []string) (*flag.FlagSet, *{{ .ConfigType }}, error) {
 {{- end }}
 {{- if .FSUsage }}
 	fs.Usage = func() {
-		usage({{ .FSUsage | quote }})
+		usage({{ .FSUsage | quoteUsage }})
 		fs.PrintDefaults()
 	}
 {{- end }}
@@ -226,7 +226,8 @@ func (g *Generator) Execute(f Format, w io.Writer) error {
 func (g *Generator) doGo(w io.Writer) error {
 	// Parse the template.
 	tmpl, err := template.New("flags").Funcs(template.FuncMap{
-		"quote": strconv.Quote,
+		"quote":      strconv.Quote,
+		"quoteUsage": quoteUsage,
 		"comment": func(s string) string {
 			s = strings.ReplaceAll(s, "\r\n", "\n")
 			s = strings.ReplaceAll(s, "\r", "\n")
@@ -407,4 +408,29 @@ func sentence(s string) string {
 		return s
 	}
 	return s + "."
+}
+
+// quoteUsage preserves the historical interpretation of Go escapes in usage
+// text, including TOML literal strings containing \n. Decode those escapes once
+// before quoting the source literal; actual newlines and unescaped quotes are
+// also supported. Unknown escape sequences remain literal text.
+func quoteUsage(s string) string {
+	var text strings.Builder
+	for len(s) > 0 {
+		if s[0] == '\\' {
+			value, multibyte, rest, err := strconv.UnquoteChar(s, '"')
+			if err == nil {
+				if multibyte {
+					text.WriteRune(value)
+				} else {
+					text.WriteByte(byte(value))
+				}
+				s = rest
+				continue
+			}
+		}
+		text.WriteByte(s[0])
+		s = s[1:]
+	}
+	return strconv.Quote(text.String())
 }
