@@ -30,7 +30,7 @@ Parser.ParsePath → Viper → ParsedConfig
 | `parser.go` | Configuration types, file/reader parsing, Go configuration defaults |
 | `generator.go` | Format dispatch, templates, type-specific generation, visibility and section grouping |
 | `cmd/flagforge/flagforge.go` | CLI options, input selection, output destination, optional prefix, process exit |
-| `generator_test.go` | Generation smoke tests, golden-file comparisons, section behavior tests, hidden-field runtime checks |
+| `generator_test.go` | Generation smoke tests, golden-file comparisons, section behavior tests |
 | `testdata/` | TOML examples and expected Go/HTML output, including a substantial rqlite configuration |
 | `.circleci/config.yml` | Formatting, vet, and test checks |
 
@@ -239,13 +239,12 @@ arguments with flags, the rqlite example, and hiding flags. HTML golden tests
 cover a single flag, grouping, and hiding. Separate tests cover section order,
 partial-section rejection, and sections leaving generated Go unchanged.
 
-The golden and smoke tests compare output bytes or check that generation
-succeeds. A separate hidden-flag test compiles and invokes generated `Forge`
-code, verifying that all supported hidden field types remain available with
-zero values, filepath tags are retained, visible flags work, and hidden CLI
-flags are rejected. There are no Markdown output tests, reader-parser tests,
-or CLI integration tests. The leading-dash fixtures illustrate why golden
-output alone does not establish runtime validity.
+These tests compare output bytes or check that generation succeeds. The hidden
+flag Go fixture verifies that its configuration field is retained while its flag
+registration is omitted. The tests do not compile or invoke generated `Forge`
+functions. There are no Markdown output tests, reader-parser tests, or CLI
+integration tests. The leading-dash fixtures illustrate why golden output alone
+does not establish runtime validity.
 
 The configured CI uses Go 1.23.4 and runs formatting checks, `go vet ./...`, and
 `go test -v ./...`. From the repository root, the principal checks are:
@@ -258,7 +257,5 @@ go test ./...
 
 Changes to the output contract should update the corresponding golden files.
 New supported types require coordinated changes to field emission, registration,
-default handling, and tests. Parser validation and broader compilation/runtime
-tests of generated code would address gaps that formatting and golden comparisons
-cannot detect. Shared slice mutation is also a constraint to resolve before promising
+default handling, and tests. Shared slice mutation is also a constraint to resolve before promising
 repeatable multi-format generation from one generator.
