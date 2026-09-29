@@ -31,6 +31,13 @@ Sections appear in the order they first appear in the TOML file, and a flag join
 
 The HTML output is a fragment rather than a complete document, so that it can be embedded in a page that supplies its own styling. Each table carries the class `rq-flags`, and section headings are emitted as Markdown `##` headings so that a static site generator gives them anchors and a table-of-contents entry.
 
+## Hiding flags
+
+Set `hide = true` on a flag to omit it from command-line flag registration and
+generated documentation while keeping its field in the generated configuration
+struct. The field retains its Go zero value, even if the flag has a configured
+default, and can be set programmatically.
+
 ## Example usage
 [rqlite](https://www.rqlite.io) uses flagforge to generate the code and documentation for its extensive set of command-line flags:
 - [rqlite TOML file](https://github.com/rqlite/rqlite/blob/v8.36.8/cmd/rqlited/flags.toml)

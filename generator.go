@@ -29,7 +29,7 @@ type {{ .ConfigType }} struct {
 	// {{ .ShortHelp }}
 	{{ .Name }} {{ .Type }}
 {{- end }}
-{{- range .Flags }}
+{{- range .ConfigFlags }}
 	// {{ .ShortHelp }}
 	{{- if eq .Type "filepath" }}
 	{{ .Name }} string ` + "`filepath:\"true\"`" + `
@@ -255,6 +255,7 @@ func (g *Generator) doGo(w io.Writer) error {
 		FSErrorHandling string
 		ConfigType      string
 		Args            []Argument
+		ConfigFlags     []Flag
 		Flags           []Flag
 	}{
 		Pkg:             g.pkg,
@@ -263,6 +264,7 @@ func (g *Generator) doGo(w io.Writer) error {
 		FSErrorHandling: g.flagSetErrorHandling,
 		ConfigType:      g.configTypeName,
 		Args:            g.args,
+		ConfigFlags:     g.flags,
 		Flags:           visibleFlags(g.flags),
 	}); err != nil {
 		return fmt.Errorf("failed to execute template: %w", err)

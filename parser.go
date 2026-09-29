@@ -39,7 +39,8 @@ type Flag struct {
 	// ignored by the Go generator.
 	Section string `mapstructure:"section"`
 
-	// Hide excludes the flag from all generated output when set to true.
+	// Hide excludes the flag from flag registration and documentation, but keeps
+	// its field in the generated configuration struct.
 	Hide bool `mapstructure:"hide"`
 }
 

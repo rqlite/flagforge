@@ -14,6 +14,8 @@ import (
 type Config struct {
 	// Unique ID for node
 	NodeID string
+	// Enable query logging
+	QueryLog string
 }
 
 // Forge sets up and parses command-line flags.

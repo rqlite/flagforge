@@ -30,7 +30,7 @@ Parser.ParsePath → Viper → ParsedConfig
 | `parser.go` | Configuration types, file/reader parsing, Go configuration defaults |
 | `generator.go` | Format dispatch, templates, type-specific generation, visibility and section grouping |
 | `cmd/flagforge/flagforge.go` | CLI options, input selection, output destination, optional prefix, process exit |
-| `generator_test.go` | Generation smoke tests, golden-file comparisons, section behavior tests |
+| `generator_test.go` | Generation smoke tests, golden-file comparisons, section behavior tests, hidden-field runtime checks |
 | `testdata/` | TOML examples and expected Go/HTML output, including a substantial rqlite configuration |
 | `.circleci/config.yml` | Formatting, vet, and test checks |
 
@@ -74,7 +74,7 @@ Each `[[flags]]` entry has these fields:
 | `short_help` | Struct comment, CLI usage text, and documentation summary |
 | `long_help` | Additional documentation text |
 | `section` | Documentation grouping name |
-| `hide` | Removes the flag from generated code and documentation |
+| `hide` | Omits flag registration and documentation, but retains the Go configuration field |
 
 Use CLI names such as `http-addr`, without a leading dash: registration passes
 the name through unchanged, while the standard Go flag package supplies the
@@ -143,6 +143,11 @@ There is no template override or generated `main` function.
 | `int64` | `Int64Var` |
 | `time.Duration` | `DurationVar`, with a default parsed by the generated `mustParseDuration` helper |
 | `[]string` | Temporary string registered with `StringVar`, then split after parsing |
+
+Hidden flags retain their fields, types, comments, and applicable struct tags in
+the generated configuration. They are not registered with the flag set or
+populated during parsing, so their fields retain Go zero values, even when a
+default is configured. Applications can populate these fields programmatically.
 
 The filepath tag is metadata only; generated code does not check, expand, or
 normalize paths. Slice flags split literally on the configured delimiter, with
@@ -223,8 +228,9 @@ These are observations of the current code, not intended guarantees:
   default. A missing duration default becomes integer `0` on the first Go run,
   but a second run rejects that value as a non-string default. Reusing a
   generator is therefore not reliably idempotent or safe for concurrent use.
-- Duration checks run before hidden flags are filtered, so an invalid hidden
-  duration can still fail Go generation despite being absent from its output.
+- Duration checks run before hidden flags are filtered for registration, so an
+  invalid hidden duration default can still fail Go generation even though that
+  default is not used by the generated code.
 
 ## Verification and maintenance
 
@@ -233,10 +239,13 @@ arguments with flags, the rqlite example, and hiding flags. HTML golden tests
 cover a single flag, grouping, and hiding. Separate tests cover section order,
 partial-section rejection, and sections leaving generated Go unchanged.
 
-These tests compare output bytes or check that generation succeeds. They do
-not compile or invoke the generated `Forge` functions. There are no Markdown
-output tests, reader-parser tests, or CLI integration tests. The leading-dash
-fixtures illustrate why golden output alone does not establish runtime validity.
+The golden and smoke tests compare output bytes or check that generation
+succeeds. A separate hidden-flag test compiles and invokes generated `Forge`
+code, verifying that all supported hidden field types remain available with
+zero values, filepath tags are retained, visible flags work, and hidden CLI
+flags are rejected. There are no Markdown output tests, reader-parser tests,
+or CLI integration tests. The leading-dash fixtures illustrate why golden
+output alone does not establish runtime validity.
 
 The configured CI uses Go 1.23.4 and runs formatting checks, `go vet ./...`, and
 `go test -v ./...`. From the repository root, the principal checks are:
@@ -249,7 +258,7 @@ go test ./...
 
 Changes to the output contract should update the corresponding golden files.
 New supported types require coordinated changes to field emission, registration,
-default handling, and tests. Parser validation and compilation/runtime tests of
-generated code would address gaps that formatting and golden comparisons cannot
-detect. Shared slice mutation is also a constraint to resolve before promising
+default handling, and tests. Parser validation and broader compilation/runtime
+tests of generated code would address gaps that formatting and golden comparisons
+cannot detect. Shared slice mutation is also a constraint to resolve before promising
 repeatable multi-format generation from one generator.
