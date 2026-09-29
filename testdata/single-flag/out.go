@@ -20,7 +20,7 @@ type Config struct {
 func Forge(arguments []string) (*flag.FlagSet, *Config, error) {
 	config := &Config{}
 	fs := flag.NewFlagSet("name", flag.ExitOnError)
-	fs.StringVar(&config.NodeID, "-node-id", "", "Node ID")
+	fs.StringVar(&config.NodeID, "node-id", "", "Node ID")
 	if err := fs.Parse(arguments); err != nil {
 		return nil, nil, err
 	}

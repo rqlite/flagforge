@@ -1,6 +1,6 @@
 [[flags]]
 name = "NodeID"
-cli = "-node-id"
+cli = "node-id"
 type = "string"
 default = ""
 short_help = "Node ID"
@@ -8,7 +8,7 @@ long_help = "Unique node identifier"
 
 [[flags]]
 name = "HTTPAddr"
-cli = "-http-addr"
+cli = "http-addr"
 type = "string"
 default = "localhost:4001"
 short_help = "HTTP API bind address"
@@ -16,7 +16,7 @@ long_help = "The interface on which the system will listen"
 
 [[flags]]
 name = "Interval"
-cli = "-interval"
+cli = "interval"
 type = "time.Duration"
 default = "10s"
 short_help = "An interval of time"
@@ -24,13 +24,13 @@ long_help = "An interval to check something"
 
 [[flags]]
 name = "List"
-cli = "-list"
+cli = "list"
 type = "[]string"
 short_help = "A slice of strings"
 
 [[flags]]
 name = "List2"
-cli = "-list2"
+cli = "list2"
 type = "[]string"
 delimiter = "#"
 default = "foo"
@@ -38,7 +38,7 @@ short_help = "Another slice of strings with a default and explicit delimiter"
 
 [[flags]]
 name = "ConfigFile"
-cli = "-config-file"
+cli = "config-file"
 type = "filepath"
 default = ""
 short_help = "path to config file"

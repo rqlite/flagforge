@@ -30,14 +30,14 @@ type Config struct {
 func Forge(arguments []string) (*flag.FlagSet, *Config, error) {
 	config := &Config{}
 	fs := flag.NewFlagSet("name", flag.ExitOnError)
-	fs.StringVar(&config.NodeID, "-node-id", "", "Node ID")
-	fs.StringVar(&config.HTTPAddr, "-http-addr", "localhost:4001", "HTTP API bind address")
-	fs.DurationVar(&config.Interval, "-interval", mustParseDuration("10s"), "An interval of time")
+	fs.StringVar(&config.NodeID, "node-id", "", "Node ID")
+	fs.StringVar(&config.HTTPAddr, "http-addr", "localhost:4001", "HTTP API bind address")
+	fs.DurationVar(&config.Interval, "interval", mustParseDuration("10s"), "An interval of time")
 	var tmpList string
-	fs.StringVar(&tmpList, "-list", "", "A slice of strings")
+	fs.StringVar(&tmpList, "list", "", "A slice of strings")
 	var tmpList2 string
-	fs.StringVar(&tmpList2, "-list2", "foo", "Another slice of strings with a default and explicit delimiter")
-	fs.StringVar(&config.ConfigFile, "-config-file", "", "path to config file")
+	fs.StringVar(&tmpList2, "list2", "foo", "Another slice of strings with a default and explicit delimiter")
+	fs.StringVar(&config.ConfigFile, "config-file", "", "path to config file")
 	if err := fs.Parse(arguments); err != nil {
 		return nil, nil, err
 	}

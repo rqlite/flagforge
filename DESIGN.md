@@ -28,14 +28,16 @@ Parser.ParsePath → Viper → ParsedConfig
 | Location | Responsibility |
 | --- | --- |
 | `parser.go` | Configuration types, file/reader parsing, Go configuration defaults |
-| `generator.go` | Format dispatch, templates, type-specific generation, visibility and section grouping |
+| `generator.go` | Format dispatch, templates, visibility, section grouping, and output escaping |
+| `validation.go` | Configuration validation and default normalization on private data |
 | `cmd/flagforge/flagforge.go` | CLI options, input selection, output destination, optional prefix, process exit |
-| `generator_test.go` | Generation smoke tests, golden-file comparisons, section behavior tests |
+| `*_test.go` | Parser, validation, repeatability, golden-file, and section tests |
+| `cmd/flagforge/flagforge_test.go` | Direct CLI calls covering file preservation, prefixes, formats, and errors |
 | `testdata/` | TOML examples and expected Go/HTML output, including a substantial rqlite configuration |
 | `.circleci/config.yml` | Formatting, vet, and test checks |
 
-The module declares Go 1.23.3 and directly depends on Viper 1.19.0. Viper and
-its transitive dependencies handle configuration decoding. Rendering uses the
+The module declares Go 1.23.3 and directly depends on Viper 1.19.0 and
+mapstructure 1.5.0 for configuration decoding. Rendering uses the
 standard library. Generated Go code also uses only the standard library, so
 applications do not need flagforge or Viper at runtime.
 
@@ -58,9 +60,9 @@ The `[go]` settings control the generated source:
 
 Each `[[arguments]]` entry has `name`, `type`, `required`, `short_help`, and
 `long_help`. Arguments appear as struct fields before flags, in configuration
-order. Only string arguments receive generated assignments from parsed
-positional arguments. `required` and argument `long_help` are decoded but do
-not control generation; the argument checks are described below.
+order. Only string arguments are supported; other types are rejected. `required`
+defaults to false, and required arguments must precede optional arguments.
+Argument `long_help` is decoded but is not currently rendered.
 
 Each `[[flags]]` entry has these fields:
 
@@ -69,25 +71,22 @@ Each `[[flags]]` entry has these fields:
 | `name` | Generated Go struct field name |
 | `cli` | Name passed verbatim to the Go flag registration method |
 | `type` | Selects the generated field type and registration method |
-| `default` | Untyped decoded value used by the Go template |
-| `delimiter` | Separator for `[]string` flags; defaults to a comma during Go generation |
+| `default` | Decoded value validated and normalized to the flag type |
+| `delimiter` | Separator for `[]string` flags; defaults to a comma when creating the generator |
 | `short_help` | Struct comment, CLI usage text, and documentation summary |
 | `long_help` | Additional documentation text |
 | `section` | Documentation grouping name |
 | `hide` | Omits flag registration and documentation, but retains the Go configuration field |
 
-Use CLI names such as `http-addr`, without a leading dash: registration passes
-the name through unchanged, while the standard Go flag package supplies the
-command-line dash syntax. Some older fixtures contain names such as
-`-node-id`; their generated code passes formatting checks but panics when
-`Forge` attempts to register those flags.
+Use CLI names such as `http-addr`, without a leading dash. The standard Go flag
+package supplies the command-line dash syntax. Visible CLI names must be unique,
+nonempty, and free of leading dashes, whitespace, and `=`.
 
-`ParsePath` creates a fresh Viper instance and calls `SetConfigFile` followed by
-`ReadInConfig`. Although the interface and error messages describe TOML, this
-path does not explicitly force TOML; format selection is delegated to Viper.
-The parser wraps read and unmarshal errors with context. It performs no general
-schema validation for missing fields, duplicate names, supported types, or
-valid Go identifiers.
+`ParsePath` and `ParseReader` each create a fresh Viper instance with the format
+explicitly set to TOML. Path parsing also works without a `.toml` extension.
+Both paths decode the entire configuration with `UnmarshalExact`, reporting
+unknown keys, including misspellings within flags and arguments. Weak type
+coercion is disabled. Read and unmarshal failures are wrapped with context.
 
 ## Library and CLI interfaces
 
@@ -96,9 +95,13 @@ A library caller uses `NewParser().ParsePath(path)`, passes the result to
 `Markdown`, and `HTML`; an unknown format returns an error. The writer belongs
 to the caller and is not closed by the library.
 
-`NewGenerator` currently always returns a nil error for a non-nil configuration;
-it copies the Go settings and retains the argument and flag slices. It does
-not validate the configuration or deep-copy its slices. Passing nil panics.
+`NewGenerator` rejects nil input, copies the settings and slices, and validates
+the private configuration. It checks Go identifiers, generated-name conflicts,
+duplicate fields and CLI names, supported types, argument ordering, error policy,
+and default types and ranges. This validation applies to all output formats.
+Defaults are normalized on the private copy. Subsequent generation does not
+mutate the generator or caller configuration, so repeated and mixed-format calls
+are independent of execution order.
 
 Build and run the executable from the repository root with:
 
@@ -109,9 +112,8 @@ go build -o flagforge ./cmd/flagforge
 ./flagforge -f html -p introduction.md -o flags.md flags.toml
 ```
 
-The CLI defaults to Go output on stdout. It uses the first positional argument
-as the input path, accepts the lowercase format names shown above, and ignores
-additional positional arguments. Its own options must precede the input path
+The CLI defaults to Go output on stdout. It requires exactly one positional argument
+as the input path and accepts the lowercase format names shown above. Its own options must precede the input path
 because it uses the standard `flag` parser.
 
 The `-p` option copies a file's bytes before generated output, without inserting
@@ -119,15 +121,25 @@ a newline or interpreting the content. This supports documentation front matter
 and introductions; it is a CLI feature, not part of `Generator`. Errors are
 printed to stderr and terminate the process with status 1.
 
-An `-o` destination is created or truncated after parsing the input, but before
-reading the prefix or generating output. Writes are not atomic: failure can
-leave an empty file, a prefix alone, or partial output. Deferred close errors
-are not checked, and `os.Exit` bypasses deferred cleanup on error paths.
+The CLI reads the prefix and renders the complete output before writing. For
+`-o`, it writes a file in a private temporary directory beside the destination,
+checks both the write and close, then renames the file over the destination. Earlier
+failures preserve existing content. The prefix may be the output file itself.
+Existing regular-file permissions are preserved, existing symbolic links are
+resolved to their targets, and new files use normal creation permissions (`0666`
+masked by the process umask). Nonregular destinations are rejected. Temporary
+files are cleaned up on failure. Filesystem rename guarantees apply; this is not a promise of
+power-loss durability. Stdout is written after rendering and propagates write
+errors, but a failing stdout writer may already have received some bytes.
+
+CLI logic lives in `run(args, stdout, stderr)`, allowing direct tests without
+subprocesses. Only `main` prints returned errors and exits the process.
 
 ## Generated Go behavior
 
-Go generation validates and normalizes selected defaults, renders a fixed
-`text/template` into a buffer, and runs `go/format.Source` before writing it.
+Go generation renders a fixed `text/template` into a buffer and runs
+`go/format.Source` before writing it. String literals use `strconv.Quote`, and
+multiline help comments receive a comment prefix on every line.
 The output contains a generated-code notice, the configuration struct,
 `Forge(arguments []string) (*flag.FlagSet, *Config, error)` (using the configured
 struct name), and helper functions for durations, splitting, errors, and usage.
@@ -147,18 +159,26 @@ There is no template override or generated `main` function.
 Hidden flags retain their fields, types, comments, and applicable struct tags in
 the generated configuration. They are not registered with the flag set or
 populated during parsing, so their fields retain Go zero values, even when a
-default is configured. Applications can populate these fields programmatically.
+default is configured. Hidden CLI names, delimiters, and defaults do not
+participate in registration or default validation; their field names and types
+are still validated. Applications can populate these fields programmatically.
 
 The filepath tag is metadata only; generated code does not check, expand, or
 normalize paths. Slice flags split literally on the configured delimiter, with
 no trimming or escaping. An empty string becomes nil. Repeated occurrences use
 the final string value rather than appending elements.
 
-Every call to `Forge` creates a fresh configuration and `flag.FlagSet`, checks
-the raw input length for each declared argument, registers flags, optionally
-installs a usage function, and calls `fs.Parse(arguments)`. On success, it copies
-`fs.Arg(i)` into string argument fields, splits slice flags, and returns the
-flag set and configuration. Returned parse errors yield `(nil, nil, err)`.
+Omitted defaults become `""` for string, filepath, and slice flags; `false` for
+boolean flags; `0` for integer flags; and `"0s"` for duration flags. Defaults with
+incompatible types are rejected. Integer validation accepts signed or unsigned
+integer values within the target type's range; `int` uses the generator's host
+word size. Explicit duration defaults are checked with `time.ParseDuration`.
+
+Every call to `Forge` creates a fresh configuration and `flag.FlagSet`, registers
+flags, optionally installs a usage function, and calls `fs.Parse(arguments)`.
+After successful parsing, required arguments are checked using `fs.NArg()`.
+Optional arguments may be absent. The function copies `fs.Arg(i)` into argument
+fields, splits slice flags, and returns the flag set and configuration. Returned parse errors yield `(nil, nil, err)`.
 The configured flag error policy still applies: the default `ExitOnError` can
 terminate the process rather than return an error.
 
@@ -182,69 +202,51 @@ sections entirely.
 
 Markdown emits an optional `##` heading and a two-column `Flag | Usage` table
 per section. It preserves the CLI name exactly, escapes pipes, and turns
-newlines in flag text into `<br>`. It currently appends `long_help` only when
-`default` is non-nil, adding a period to short help if needed. The default value
-itself is never displayed. Other Markdown syntax and section names are emitted
-without escaping.
+newlines in flag text into `<br>`. It appends nonempty `long_help` independently of
+the default value, adding punctuation between the summary and details when
+needed. The default value itself is never displayed. Other Markdown syntax and
+section names are emitted without escaping.
 
 HTML emits a fragment: optional Markdown `##` headings followed by HTML tables.
 The mixed format is intentional for embedding in a static-site page whose
 Markdown processor supplies heading anchors and table-of-contents entries.
 Tables use `rq-flags`; header cells use `col-cli` and `col-usage`. Styling belongs
 to the embedding site. Each CLI name gains a leading dash and appears in a
-`<code>` element. Short help always gains a period; nonempty long help follows
-`<br><br>`, independently of the default value. Flag names and help text are
+`<code>` element. Nonempty short help gains a period unless it ends in `.`, `!`,
+or `?`; nonempty long help follows `<br><br>`, independently of the default value.
+Flag names and help text are
 HTML-escaped, but section headings are emitted as raw Markdown.
 
 Go and HTML buffer their rendered output before writing it. Markdown writes
 one section at a time, so a later writer failure can leave earlier sections
 written. All formats propagate writer errors.
 
-## Implementation limitations
+## Scope and limitations
 
-These are observations of the current code, not intended guarantees:
+Generated applications use the standard Go flag package's parsing and error
+policies. There is no support for custom flag types, numeric positional
+arguments, runtime configuration-file loading, or environment-variable overrides.
+Hidden fields remain available for application code to populate directly.
 
-- `ParseReader` creates a local Viper instance but calls the package-level
-  `viper.ReadConfig(r)`, then unmarshals the untouched local instance. It also
-  does not set a configuration type. It therefore does not provide a working
-  equivalent of `ParsePath`: it can fail on the missing format, or, with global
-  Viper configured externally, read into the wrong instance.
-- Positional argument checks use `len(arguments)` before flag parsing and
-  ignore `required`. An optional argument can be reported missing, while a
-  flags-only invocation can satisfy the length check and leave a required
-  string argument empty. Non-string argument fields are not populated.
-- Go template values are interpolated directly into source, including quoted
-  string literals and comments. There is no Go string-literal escaping step.
-  Quotes, backslashes, or newlines in configuration text can change the emitted
-  meaning or cause formatting failures.
-- Formatting checks syntax, not types or runtime behavior. Unsupported flag
-  types still produce fields but no registration; invalid type names, duplicate
-  fields, bad defaults, or invalid error-policy selectors may survive generation
-  and fail to compile or execute. Missing scalar defaults are not generally
-  replaced with appropriate Go zero values.
-- Go generation normalizes `[]string` defaults/delimiters and duration defaults
-  in the retained flag slice. This changes the caller's configuration and can
-  change later output: Markdown's long-help condition depends on a non-nil
-  default. A missing duration default becomes integer `0` on the first Go run,
-  but a second run rejects that value as a non-string default. Reusing a
-  generator is therefore not reliably idempotent or safe for concurrent use.
-- Duration checks run before hidden flags are filtered for registration, so an
-  invalid hidden duration default can still fail Go generation even though that
-  default is not used by the generated code.
+Generation checks its supported schema and formats Go source, but does not
+compile the generated code together with the consuming application. Applications
+must avoid collisions with generated declarations such as `Forge` and the helper
+functions. Documentation renders section names as Markdown and does not provide
+a general Markdown sanitization layer. Output writers remain caller-owned.
 
 ## Verification and maintenance
 
-The existing Go golden tests cover a single flag, multiple flag types,
-arguments with flags, the rqlite example, and hiding flags. HTML golden tests
-cover a single flag, grouping, and hiding. Separate tests cover section order,
-partial-section rejection, and sections leaving generated Go unchanged.
+Go golden tests cover single and multiple flags, positional arguments, the
+rqlite example, hidden fields, zero defaults, quoting, multiline comments, and
+required/optional argument output. HTML and Markdown golden tests cover visibility,
+sections, escaping, punctuation, and help without defaults. Golden outputs are
+produced by executing the generator on each fixture's TOML input.
 
-These tests compare output bytes or check that generation succeeds. The hidden
-flag Go fixture verifies that its configuration field is retained while its flag
-registration is omitted. The tests do not compile or invoke generated `Forge`
-functions. There are no Markdown output tests, reader-parser tests, or CLI
-integration tests. The leading-dash fixtures illustrate why golden output alone
-does not establish runtime validity.
+Unit tests cover path/reader equivalence, strict decoding, invalid configurations,
+repeatable generation, caller-data isolation, and section grouping. CLI tests
+call `run` directly to check output preservation, prefix/output reuse, permissions,
+argument errors, formats, and writer errors. Tests do not start subprocesses or
+compile and invoke generated `Forge` functions.
 
 The configured CI uses Go 1.23.4 and runs formatting checks, `go vet ./...`, and
 `go test -v ./...`. From the repository root, the principal checks are:
@@ -257,5 +259,5 @@ go test ./...
 
 Changes to the output contract should update the corresponding golden files.
 New supported types require coordinated changes to field emission, registration,
-default handling, and tests. Shared slice mutation is also a constraint to resolve before promising
-repeatable multi-format generation from one generator.
+default handling, and tests. Keep normalization confined to the private
+configuration so generation remains repeatable across output formats.

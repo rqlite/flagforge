@@ -5,12 +5,42 @@
 _flagforge_ allows you to automatically generate Go [flag](https://pkg.go.dev/flag) code, as well as the associated Markdown and HTML documentation for those flags, all using a single configuration file. This means you only have to define your command-line options once in a TOML file, and _flagforge_ will do the rest.
 
 ## Running _flagforge_
-Clone the repo and execute `go build`. Pass `-h` to `flagforge` to learn how to use it.
+Clone the repo and build the command from the repository root. Pass `-h` to
+`flagforge` to learn how to use it.
 ```bash
-flagforge -f go|markdown|html <TOML file>
+go build -o flagforge ./cmd/flagforge
+./flagforge -f go -o config_flags.go flags.toml
 ```
 
+The supported formats are `go` (the default), `markdown`, and `html`. Omit `-o`
+to write to stdout. Supply exactly one input TOML file, with options before its
+path. File output is replaced only after the prefix and generated content have
+been prepared and the replacement file has been successfully written and closed.
+
 Pass `-p <file>` to copy the contents of a file to the output before the generated content. This is how a generated documentation page keeps hand-written material -- front matter, an introduction -- that would otherwise be lost every time the page is regenerated.
+
+## Configuration rules
+
+Unknown configuration keys are errors. Go package, configuration type, and field
+names must be valid Go identifiers; field names must be unique across arguments
+and flags. CLI names must be unique and must omit leading dashes, whitespace,
+and `=`. Use `cli = "node-id"`, not `cli = "-node-id"`.
+
+Supported flag types are `string`, `filepath`, `bool`, `int`, `int64`, `uint64`,
+`time.Duration`, and `[]string`. Omitted defaults use the type's zero value.
+String, filepath, and slice defaults must be strings; duration defaults must be
+valid duration strings such as `"10s"`; boolean and integer defaults must have
+their corresponding TOML types. `[]string` uses a comma delimiter unless one is
+specified. An empty slice default produces a nil slice.
+
+Positional arguments support `type = "string"`. Mark required arguments with
+`required = true` and place them before optional arguments. Required arguments
+are checked after parsing flags. `flag_error_handling` accepts `ContinueOnError`,
+`ExitOnError` (the default), or `PanicOnError`.
+
+Text is preserved as decoded from TOML. Use a TOML basic string such as
+`flag_set_usage = "Usage:\n  example [flags]\n"` for newlines; literal strings
+in single quotes preserve backslashes.
 
 ## Grouping flags into sections
 Give a flag an optional `section` key and the generated Markdown and HTML documentation will group flags under a heading of that name:
@@ -25,7 +55,7 @@ short_help = "HTTP server bind address"
 section = "HTTP API"
 ```
 
-Sections appear in the order they first appear in the TOML file, and a flag joins a section that has already appeared rather than opening a new one, so flags belonging to the same section need not be adjacent. If any flag declares a section then every flag must; a partially sectioned file is an error, since otherwise each newly added flag would silently collect in an unnamed group.
+Sections appear in the order they first appear in the TOML file, and a flag joins a section that has already appeared rather than opening a new one, so flags belonging to the same section need not be adjacent. If any visible flag declares a section then every visible flag must; a partially sectioned file is an error, since otherwise each newly added flag would silently collect in an unnamed group.
 
 `section` affects documentation only -- the generated Go code is unchanged by it.
 

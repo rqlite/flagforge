@@ -24,13 +24,13 @@ type Config struct {
 func Forge(arguments []string) (*flag.FlagSet, *Config, error) {
 	config := &Config{}
 	fs := flag.NewFlagSet("name", flag.ExitOnError)
-	if len(arguments) <= 0 {
-		return nil, nil, fmtError("missing required argument: DataDir")
-	}
-	fs.StringVar(&config.NodeID, "-node-id", "", "Node ID")
-	fs.StringVar(&config.HTTPAddr, "-http-addr", "localhost:4001", "HTTP API bind address")
+	fs.StringVar(&config.NodeID, "node-id", "", "Node ID")
+	fs.StringVar(&config.HTTPAddr, "http-addr", "localhost:4001", "HTTP API bind address")
 	if err := fs.Parse(arguments); err != nil {
 		return nil, nil, err
+	}
+	if fs.NArg() <= 0 {
+		return nil, nil, fmtError("missing required argument: DataDir")
 	}
 	config.DataDir = fs.Arg(0)
 	return fs, config, nil

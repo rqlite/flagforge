@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 )
 
@@ -45,9 +46,9 @@ type Flag struct {
 }
 
 type ParsedConfig struct {
-	GoConfig  GoConfig
-	Arguments []Argument
-	Flags     []Flag
+	GoConfig  GoConfig   `mapstructure:"go"`
+	Arguments []Argument `mapstructure:"arguments"`
+	Flags     []Flag     `mapstructure:"flags"`
 }
 
 type Parser struct {
@@ -68,39 +69,29 @@ func (p *Parser) ParsePath(path string) (*ParsedConfig, error) {
 
 func (p *Parser) ParseReader(r io.Reader) (*ParsedConfig, error) {
 	v := getViper()
-	if err := viper.ReadConfig(r); err != nil {
+	if err := v.ReadConfig(r); err != nil {
 		return nil, fmt.Errorf("failed to read TOML from reader: %w", err)
 	}
 	return parseConfig(v)
 }
 
 func parseConfig(v *viper.Viper) (*ParsedConfig, error) {
-	goConfig := GoConfig{
+	cfg := ParsedConfig{GoConfig: GoConfig{
 		Package:           "pkg",
 		ConfigTypeName:    "Config",
 		FlagSetName:       "name",
 		FlagErrorHandling: "ExitOnError",
+	}}
+	if err := v.UnmarshalExact(&cfg, func(c *mapstructure.DecoderConfig) {
+		c.WeaklyTypedInput = false
+	}); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
-
-	if err := v.UnmarshalKey("go", &goConfig); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal go config: %w", err)
-	}
-
-	var args []Argument
-	if err := v.UnmarshalKey("arguments", &args); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal arguments: %w", err)
-	}
-	var flags []Flag
-	if err := v.UnmarshalKey("flags", &flags); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal flags: %w", err)
-	}
-	return &ParsedConfig{
-		GoConfig:  goConfig,
-		Arguments: args,
-		Flags:     flags,
-	}, nil
+	return &cfg, nil
 }
 
 func getViper() *viper.Viper {
-	return viper.New()
+	v := viper.New()
+	v.SetConfigType("toml")
+	return v
 }

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"go/format"
 	"io"
+	"strconv"
 	"strings"
 	"text/template"
-	"time"
 )
 
 const flagTemplate = `
@@ -26,11 +26,11 @@ import (
 // {{ .ConfigType }} represents all configuration options.
 type {{ .ConfigType }} struct {
 {{- range .Args }}
-	// {{ .ShortHelp }}
+	// {{ .ShortHelp | comment }}
 	{{ .Name }} {{ .Type }}
 {{- end }}
 {{- range .ConfigFlags }}
-	// {{ .ShortHelp }}
+	// {{ .ShortHelp | comment }}
 	{{- if eq .Type "filepath" }}
 	{{ .Name }} string ` + "`filepath:\"true\"`" + `
 	{{- else }}
@@ -42,33 +42,28 @@ type {{ .ConfigType }} struct {
 // Forge sets up and parses command-line flags.
 func Forge(arguments []string) (*flag.FlagSet, *{{ .ConfigType }}, error) {
 	config := &{{ .ConfigType }}{}
-	fs := flag.NewFlagSet("{{ .FSName }}", flag.{{ .FSErrorHandling }})
-{{- range $index, $element := .Args }}
-	if len(arguments) <= {{ $index }} {
-		return nil, nil, fmtError("missing required argument: {{ $element.Name }}")
-	}
-{{- end }}
+	fs := flag.NewFlagSet({{ .FSName | quote }}, flag.{{ .FSErrorHandling }})
 {{- range .Flags }}
 	{{- if or (eq .Type "string") (eq .Type "filepath") }}
-	fs.StringVar(&config.{{ .Name }}, "{{ .CLI }}", "{{ .Default }}", "{{ .ShortHelp }}")
+	fs.StringVar(&config.{{ .Name }}, {{ .CLI | quote }}, {{ .Default | quote }}, {{ .ShortHelp | quote }})
 	{{- else if eq .Type "bool" }}
-	fs.BoolVar(&config.{{ .Name }}, "{{ .CLI }}", {{ .Default }}, "{{ .ShortHelp }}")
+	fs.BoolVar(&config.{{ .Name }}, {{ .CLI | quote }}, {{ .Default }}, {{ .ShortHelp | quote }})
 	{{- else if eq .Type "int" }}
-	fs.IntVar(&config.{{ .Name }}, "{{ .CLI }}", {{ .Default }}, "{{ .ShortHelp }}")
+	fs.IntVar(&config.{{ .Name }}, {{ .CLI | quote }}, {{ .Default }}, {{ .ShortHelp | quote }})
 	{{- else if eq .Type "uint64" }}
-	fs.Uint64Var(&config.{{ .Name }}, "{{ .CLI }}", {{ .Default }}, "{{ .ShortHelp }}")
+	fs.Uint64Var(&config.{{ .Name }}, {{ .CLI | quote }}, {{ .Default }}, {{ .ShortHelp | quote }})
 	{{- else if eq .Type "int64" }}
-	fs.Int64Var(&config.{{ .Name }}, "{{ .CLI }}", {{ .Default }}, "{{ .ShortHelp }}")
+	fs.Int64Var(&config.{{ .Name }}, {{ .CLI | quote }}, {{ .Default }}, {{ .ShortHelp | quote }})
 	{{- else if eq .Type "time.Duration" }}
-	fs.DurationVar(&config.{{ .Name }}, "{{ .CLI }}", mustParseDuration("{{ .Default }}"), "{{ .ShortHelp }}")
+	fs.DurationVar(&config.{{ .Name }}, {{ .CLI | quote }}, mustParseDuration({{ .Default | quote }}), {{ .ShortHelp | quote }})
 	{{- else if eq .Type "[]string" }}
 	var tmp{{ .Name }} string
-	fs.StringVar(&tmp{{ .Name }}, "{{ .CLI }}", "{{ .Default }}", "{{ .ShortHelp }}")
+	fs.StringVar(&tmp{{ .Name }}, {{ .CLI | quote }}, {{ .Default | quote }}, {{ .ShortHelp | quote }})
 	{{- end }}
 {{- end }}
 {{- if .FSUsage }}
 	fs.Usage = func() {
-		usage("{{ .FSUsage }}")
+		usage({{ .FSUsage | quote }})
 		fs.PrintDefaults()
 	}
 {{- end }}
@@ -76,13 +71,18 @@ func Forge(arguments []string) (*flag.FlagSet, *{{ .ConfigType }}, error) {
 	    return nil, nil, err
     }
 {{- range $index, $element := .Args }}
+	{{- if .Required }}
+	if fs.NArg() <= {{ $index }} {
+		return nil, nil, fmtError({{ printf "missing required argument: %s" .Name | quote }})
+	}
+	{{- end }}
 	{{- if eq .Type "string" }}
 	    config.{{ .Name }} = fs.Arg({{ $index }})
 	{{- end }}
 {{- end }}
 {{- range $index, $element := .Flags }}
 	{{- if eq .Type "[]string" }}
-	    config.{{ .Name }} = splitString(tmp{{ .Name }}, "{{ .Delimiter }}")
+	    config.{{ .Name }} = splitString(tmp{{ .Name }}, {{ .Delimiter | quote }})
 	{{- end }}
 {{- end }}
 	return fs, config, nil
@@ -129,7 +129,7 @@ const htmlSectionTemplate = `{{ if .Name }}## {{ .Name }}
 	{{- range .Flags }}
 	<tr>
 		<td><code>-{{ .CLI | html }}</code></td>
-		<td>{{ .ShortHelp | html }}.
+		<td>{{ .ShortHelp | sentence | html }}
 		{{- if .LongHelp }}
 		    <br><br>{{ .LongHelp | html }}
 		{{- end }}</td>
@@ -185,9 +185,18 @@ type Generator struct {
 	flags []Flag
 }
 
-// NewGenerator creates a new generator with the given package name, name, and
-// path to the TOML configuration file.
+// NewGenerator validates the configuration and creates an independent generator.
 func NewGenerator(cfg *ParsedConfig) (*Generator, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("nil configuration")
+	}
+	copy := *cfg
+	copy.Arguments = append([]Argument(nil), cfg.Arguments...)
+	copy.Flags = append([]Flag(nil), cfg.Flags...)
+	if err := validateConfig(&copy); err != nil {
+		return nil, err
+	}
+	cfg = &copy
 	return &Generator{
 		pkg:                  cfg.GoConfig.Package,
 		configTypeName:       cfg.GoConfig.ConfigTypeName,
@@ -216,34 +225,16 @@ func (g *Generator) Execute(f Format, w io.Writer) error {
 
 func (g *Generator) doGo(w io.Writer) error {
 	// Parse the template.
-	tmpl, err := template.New("flags").Parse(flagTemplate)
+	tmpl, err := template.New("flags").Funcs(template.FuncMap{
+		"quote": strconv.Quote,
+		"comment": func(s string) string {
+			s = strings.ReplaceAll(s, "\r\n", "\n")
+			s = strings.ReplaceAll(s, "\r", "\n")
+			return strings.ReplaceAll(s, "\n", "\n\t// ")
+		},
+	}).Parse(flagTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %w", err)
-	}
-
-	// Perform some checks of the flags.
-	for i, flag := range g.flags {
-		if flag.Type == "time.Duration" {
-			if flag.Default == nil {
-				g.flags[i].Default = 0
-			} else {
-				s, ok := flag.Default.(string)
-				if !ok {
-					return fmt.Errorf("time.Duration flag %s has non-string default", flag.Name)
-				}
-				if _, err := time.ParseDuration(s); err != nil {
-					return fmt.Errorf("time.Duration flag %s has invalid default: %v", flag.Name, err)
-				}
-			}
-		}
-		if flag.Type == "[]string" {
-			if flag.Delimiter == "" {
-				g.flags[i].Delimiter = ","
-			}
-			if flag.Default == nil {
-				g.flags[i].Default = ""
-			}
-		}
 	}
 
 	// Execute the template with the flags data.
@@ -304,13 +295,14 @@ func (g *Generator) doMarkdown(w io.Writer) error {
 			builder.WriteString("|")
 			builder.WriteString(escapeMarkdown(flag.CLI))
 			builder.WriteString("|")
-			builder.WriteString(escapeMarkdown(flag.ShortHelp))
-			if flag.Default != nil {
-				if !strings.HasSuffix(flag.ShortHelp, ".") {
-					builder.WriteString(".")
+			help := flag.ShortHelp
+			if flag.LongHelp != "" {
+				if help != "" {
+					help = sentence(help) + " "
 				}
-				builder.WriteString(fmt.Sprintf(" %s", escapeMarkdown(flag.LongHelp)))
+				help += flag.LongHelp
 			}
+			builder.WriteString(escapeMarkdown(help))
 			builder.WriteString("|\n")
 		}
 		if _, err := w.Write([]byte(builder.String())); err != nil {
@@ -328,6 +320,7 @@ func (g *Generator) doHTML(w io.Writer) error {
 
 	// Parse the template.
 	tmpl, err := template.New("htmlTable").Funcs(template.FuncMap{
+		"sentence": sentence,
 		"html": func(s string) string {
 			return template.HTMLEscapeString(s)
 		},
@@ -406,4 +399,12 @@ func escapeMarkdown(text string) string {
 	text = strings.ReplaceAll(text, "|", "\\|")
 	text = strings.ReplaceAll(text, "\n", "<br>")
 	return text
+}
+
+// sentence adds punctuation only when the summary does not already end with it.
+func sentence(s string) string {
+	if s == "" || strings.HasSuffix(s, ".") || strings.HasSuffix(s, "!") || strings.HasSuffix(s, "?") {
+		return s
+	}
+	return s + "."
 }

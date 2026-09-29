@@ -1,0 +1,93 @@
+[go]
+package = "example"
+flag_set_name = 'quoted "name"'
+flag_error_handling = "ContinueOnError"
+flag_set_usage = "Usage:\n  example [flags] <path> [label]\n"
+
+[[arguments]]
+name = "Path"
+type = "string"
+required = true
+short_help = "Required path"
+
+[[arguments]]
+name = "Label"
+type = "string"
+required = false
+short_help = "Optional label"
+
+[[flags]]
+name = "Text"
+cli = "text"
+type = "string"
+default = 'C:\new\path "quoted"'
+short_help = "First line\nSecond \"quoted\" line."
+long_help = "Additional | details\non another line."
+
+[[flags]]
+name = "Empty"
+cli = "empty"
+type = "string"
+short_help = "No default."
+long_help = "Help must appear without a default."
+
+[[flags]]
+name = "File"
+cli = "file"
+type = "filepath"
+short_help = "Path!"
+
+[[flags]]
+name = "Enabled"
+cli = "enabled"
+type = "bool"
+short_help = "Enabled?"
+
+[[flags]]
+name = "Count"
+cli = "count"
+type = "int"
+
+[[flags]]
+name = "Signed"
+cli = "signed"
+type = "int64"
+
+[[flags]]
+name = "Unsigned"
+cli = "unsigned"
+type = "uint64"
+
+[[flags]]
+name = "Interval"
+cli = "interval"
+type = "time.Duration"
+
+[[flags]]
+name = "List"
+cli = "list"
+type = "[]string"
+long_help = "List help without a default."
+
+[[flags]]
+name = "Separated"
+cli = "separated"
+type = "[]string"
+delimiter = '\'
+default = 'a\b'
+
+[[flags]]
+name = "HiddenDuration"
+type = "time.Duration"
+default = "invalid but unused"
+hide = true
+
+[[flags]]
+name = "HiddenPath"
+type = "filepath"
+hide = true
+
+[[flags]]
+name = "HiddenList"
+type = "[]string"
+hide = true

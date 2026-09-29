@@ -52,7 +52,7 @@ func Test_Generator_SingleFlag(t *testing.T) {
 	toml := `
 	[[flags]]
 	name = "NodeID"
-	cli = "-node-id"
+	cli = "node-id"
 	type = "string"
 	default = ""
 	short_help = "Node ID"
@@ -107,6 +107,10 @@ func Test_Generator_GoldenFiles(t *testing.T) {
 			in:  "hide/in.toml",
 			out: "hide/out.go",
 		},
+		{
+			in:  "edge-cases/in.toml",
+			out: "edge-cases/out.go",
+		},
 	} {
 		in := "testdata/" + f.in
 		out := "testdata/" + f.out
@@ -153,6 +157,10 @@ func Test_Generator_HTMLGoldenFiles(t *testing.T) {
 			in:  "hide/in.toml",
 			out: "hide/out.html",
 		},
+		{
+			in:  "edge-cases/in.toml",
+			out: "edge-cases/out.html",
+		},
 	} {
 		in := "testdata/" + f.in
 		out := "testdata/" + f.out
@@ -178,6 +186,28 @@ func Test_Generator_HTMLGoldenFiles(t *testing.T) {
 			fmt.Println(buf.String())
 			t.Fatal()
 		}
+	}
+}
+
+func Test_Generator_MarkdownGoldenFiles(t *testing.T) {
+	for _, name := range []string{"single-flag", "sections", "hide", "edge-cases"} {
+		t.Run(name, func(t *testing.T) {
+			cfg, err := NewParser().ParsePath("testdata/" + name + "/in.toml")
+			if err != nil {
+				t.Fatal(err)
+			}
+			g, err := NewGenerator(cfg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var b bytes.Buffer
+			if err := g.Execute(Markdown, &b); err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(b.Bytes(), mustReadFile("testdata/"+name+"/out.md")) {
+				t.Fatalf("unexpected Markdown output:\n%s", b.String())
+			}
+		})
 	}
 }
 
